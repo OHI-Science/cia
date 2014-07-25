@@ -36,21 +36,24 @@ diff_noLand <- raster(file.path(path_trim, "Pressures2013minus2008/global_cumula
 #plot(diff_noLand)
 diff_noLand_subsample <- sampleRegular(diff_noLand, size=500000, asRaster = TRUE)
 
-png(file.path(path_save, "Fig1.CumImpDiff.png"), res=500, width=5, height=5, units="in")  
+png(file.path(path_save, "Fig1.CumImpDiff.png"), res=500, width=7, height=7, units="in")  
 #pdf(file.path(path_save, "Fig1.CumImpDiff.pdf"))  #, width=1200, height=1000, res=150, pointsize=14)
 cols = colorRampPalette(brewer.pal(11, 'Spectral'))(255)
-plot(diff_noLand, col=rev(cols), axes=FALSE, box=FALSE, legend.shrink=0.5)
+plot(diff_noLand, col=rev(cols), axes=FALSE, box=FALSE, legend.shrink=0.5, legend.width=0.6, 
+     axis.args=list(cex.axis=1.3))
 plot(land, add=TRUE, border="gray80", col="gray90", lwd=0.5)
 dev.off()
+
 
 ## Figure 2 ----
 # Part a: Global 2013 scores
 Cum2013 <- raster(file.path(path_trim, "Pressures2013/global_cumulative_impact_2013_all_layers"))
 
 #pdf(file.path(path_save, 'Fig2a.CumImp2013.pdf'))  #, width=1200, height=1000, res=150, pointsize=14)
-png(file.path(path_save, 'Fig2a.CumImp2013.png'), res=500, width=5, height=5, units="in")
+png(file.path(path_save, 'Fig2a.CumImp2013.png'), res=500, width=7, height=7, units="in")
 cols = colorRampPalette(brewer.pal(11, 'Spectral'))(255)
-plot(Cum2013, col=rev(cols), axes=FALSE, box=FALSE, legend.shrink=0.5)
+plot(Cum2013, col=rev(cols), axes=FALSE, box=FALSE, legend.shrink=0.5, legend.width=0.6,
+     axis.args=list(cex.axis=1.3))
 plot(land, add=TRUE, border="gray80", col="gray90", lwd=0.5)
 dev.off()
 
@@ -98,17 +101,17 @@ plot(DiffHighLowScore)
 freq(DiffHighLowScore)
 
 #pdf(file.path(path_save, 'Fig2b.value_trend.pdf')) #, width=1200, height=1000)
-png(file.path(path_save, 'Fig2b.value_trend.png'), res=500, width=5, height=5, units="in")
+png(file.path(path_save, 'Fig2b.value_trend.png'), res=500, width=7, height=7, units="in")
 par(mar=c(2,2,2,2))
 par(oma=c(0,0,0,4))
 arg <- list(at=c(-2,-1,0,1,2), 
-            labels=c("low/decreasing", "low/increasing", "neither", "high/decreasing", "high/increasing"), 
-            cex.axis=0.6)
+            labels=c("low/\n decreasing", "low/\n increasing", "neither", "high/\n decreasing", "high/\n increasing"), 
+            cex.axis=1)
 color <- c("#023FA5", "#BEC1D4", "#FDF5E6", "#D6BCC0", "#8E063B")
 #color <- rev(brewer.pal(5, "Spectral"))
 plot(DiffHighLowScore, col=color, axis.arg=arg, axes=FALSE, box=FALSE, legend.shrink=0.3, 
-     legend.args=list(text="score/trend", font=2, line=1, cex=0.6))
-plot(land, add=TRUE, border="gray80", col="gray90", lwd=0.5)
+     legend.args=list(text="score/trend", font=2, line=1, cex=1))
+plot(land, add=TRUE, border="gray70", col="gray90", lwd=0.5)
 dev.off()
 
 
@@ -137,7 +140,7 @@ sst_diff <- raster(file.path(path_trim, "Pressures2013minus2008/sst_combo_dif"))
 histogram(sst_diff, main="sst: 2013 minus 2008")
 
 #pdf(file.path(path_save, 'Fig3a.SST_diff.pdf'))  #, width=1200, height=1000, res=150, pointsize=14)
-png(file.path(path_save, 'Fig3a.SST_diff.png'), res=500, width=5, height=5, units="in")
+png(file.path(path_save, 'Fig3a.SST_diff.png'), res=500, width=7, height=7, units="in")
 my_breaks <- c(-2.6,-2, -1.5, -1, -0.5, 0, 0.5, 1, 1.5, 2, 2.6)
 cols = colorRampPalette(brewer.pal(11, 'Spectral'))(length(my_breaks)-1)
 plot(sst_diff, col=rev(cols), axes=FALSE, box=FALSE, breaks=my_breaks, legend=FALSE)
@@ -148,9 +151,9 @@ def_breaks <- seq(min(my_breaks), max(my_breaks), length.out=length(my_breaks))
 image.plot(sst_diff, zlim = c(min(my_breaks), max(my_breaks)), 
            legend.only = TRUE, 
            legend.shrink=0.5,
+           legend.width=0.6,
            col = rev(cols),
-           axis.args = list(at = def_breaks, labels = my_breaks, cex.axis=0.7))
-
+           axis.args = list(at = def_breaks, labels = my_breaks, cex.axis=1))
 plot(land, add=TRUE, border="gray80", col="gray90", lwd=0.5)
 dev.off()
 
@@ -172,22 +175,57 @@ nutrient_zeroCut <- raster(file.path(path, "ModifiedPressureMaps/nutrient_zerocu
 
 ## crop different regions
 # North America
-extent <- drawExtent()
+#extent <- drawExtent()
 na_extent <- c(-10800000, -3300000, 2340000, 8260000)
 na <- crop(nutrient_zeroCut, na_extent)
 plot(na)
 
-#pdf(file.path(path_save, 'Fig3a.nutrient_NA_diff.pdf')  #, width=1200, height=1000, res=150, pointsize=14)
-png(file.path(path_save, 'Fig3a.nutrient_NA_diff.png'), res=500, width=5, height=5, units="in")
+#pdf(file.path(path_save, 'Fig3B.nutrient_NA_diff.pdf')  #, width=1200, height=1000, res=150, pointsize=14)
+png(file.path(path_save, 'Fig3b.nutrient_NA_diff.png'), res=500, width=7, height=7, units="in")
 my_breaks <- c(-0.46 , -0.10, -0.08, -0.06, -0.04, -0.02, 0, 0.02, 0.04, 0.06, 0.08, 0.1, 0.69)
 cols = colorRampPalette(brewer.pal(11, 'Spectral'))(length(my_breaks)-1)
 plot(na, col=rev(cols), axes=FALSE, box=FALSE, breaks=my_breaks, legend=FALSE)
-
+#plot(land, add=TRUE, border="gray95", col="gray95", lwd=0.5)
+#plot(na, col=rev(cols), axes=FALSE, box=FALSE, breaks=my_breaks, legend=FALSE)
+# add axis with fields package function:
+def_breaks <- seq(min(my_breaks), max(my_breaks), length.out=length(my_breaks))
+image.plot(sst_diff, zlim = c(min(my_breaks), max(my_breaks)), 
+           legend.only = TRUE, 
+           legend.shrink=0.5,
+           legend.width=0.6,
+           col = rev(cols),
+           axis.args = list(at = def_breaks, labels = my_breaks, cex.axis=1))
 dev.off()
 
 
-# SA
+## crop different regions
+# Florida
 extent <- drawExtent()
+fl_extent <- c(-8000000, -7000000, 3000000, 4000000)
+fl <- crop(nutrient_zeroCut, fl_extent)
+plot(fl)
+
+#pdf(file.path(path_save, 'Fig3B.nutrient_NA_diff.pdf')  #, width=1200, height=1000, res=150, pointsize=14)
+png(file.path(path_save, 'Fig3b.nutrient_FL_diff.png'), res=500, width=7, height=7, units="in")
+my_breaks <- c(-0.46 , -0.10, -0.08, -0.06, -0.04, -0.02, 0, 0.02, 0.04, 0.06, 0.08, 0.1, 0.69)
+cols = colorRampPalette(brewer.pal(11, 'Spectral'))(length(my_breaks)-1)
+plot(fl, col=rev(cols), axes=FALSE, box=FALSE, breaks=my_breaks, legend=FALSE)
+plot(land, add=TRUE, border="gray95", col="gray95", lwd=0.5)
+#plot(na, col=rev(cols), axes=FALSE, box=FALSE, breaks=my_breaks, legend=FALSE)
+# add axis with fields package function:
+def_breaks <- seq(min(my_breaks), max(my_breaks), length.out=length(my_breaks))
+image.plot(sst_diff, zlim = c(min(my_breaks), max(my_breaks)), 
+           legend.only = TRUE, 
+           legend.shrink=0.5,
+           legend.width=0.6,
+           col = rev(cols),
+           axis.args = list(at = def_breaks, labels = my_breaks, cex.axis=1))
+dev.off()
+
+
+
+# SA
+#extent <- drawExtent()
 sa_extent <- c(-8780000, -2790000, -6800000, 1490000)
 sa <- crop(nutrient_zeroCut, sa_extent)
 plot(sa)
@@ -215,23 +253,27 @@ plot(aus, col=rev(cols), axes=FALSE, box=FALSE, breaks=my_breaks, legend=FALSE)
 dev.off()
 
 ## global
-pdf('/var/data/ohi/git-annex/Global/NCEAS-Pressures-Summaries_frazier2013/ResultMaps/Fig3a.nutrient_global_diff.pdf')  #, width=1200, height=1000, res=150, pointsize=14)
-my_breaks <- c(-0.46 , -0.10, -0.08, -0.06, -0.04, -0.02, 0, 0.02, 0.04, 0.06, 0.08, 0.1, 0.69)
-cols = colorRampPalette(brewer.pal(11, 'Spectral'))(length(my_breaks)-1)
+png(file.path(path_save, 'Fig3b.nutrient_global.png'), res=500, width=7, height=7, units="in")
+#my_breaks <- c(-0.46 , -0.10, -0.08, -0.06, -0.04, -0.02, 0, 0.02, 0.04, 0.06, 0.08, 0.1, 0.69)
+#cols = colorRampPalette(brewer.pal(11, 'Spectral'))(length(my_breaks)-1)
 #plot(nutrient_zeroCut, col=rev(cols), axes=FALSE, box=FALSE, breaks=my_breaks, legend=FALSE)
 plot(nutrient_diff, col="slategray1", axes=FALSE, box=FALSE, legend=FALSE)
-plot(land, add=TRUE, border="gray85", col="gray95")
+
+# add axis with fields package function:
+# def_breaks <- seq(min(my_breaks), max(my_breaks), length.out=length(my_breaks))
+# image.plot(dem_fishing_diff, zlim = c(min(my_breaks), max(my_breaks)), 
+#            legend.only = TRUE, 
+#            legend.shrink=0.5,
+#            legend.width=0.6,
+#            col = rev(cols),
+#            axis.args = list(at = def_breaks, labels = my_breaks, cex.axis=1))
+# 
+# # add land layer
+# plot(land, add=TRUE, border="gray80", col="gray90", lwd=0.5)
 plot(extent(na_extent), col="red", add=TRUE)
 plot(extent(sa_extent), col="red", add=TRUE)
 plot(extent(aus_extent), col="red", add=TRUE)
-
-# add axis with fields package function:
-def_breaks <- seq(min(my_breaks), max(my_breaks), length.out=length(my_breaks))
-image.plot(dem_fishing_diff, zlim = c(min(my_breaks), max(my_breaks)), 
-           legend.only = TRUE, 
-           legend.shrink=0.7 ,
-           col = rev(cols),
-           axis.args = list(at = def_breaks, labels = my_breaks))
+dev.off()
 
 #plot(land, add=TRUE, border="gray85", col="gray90")
 dev.off()
@@ -240,12 +282,13 @@ dev.off()
 
 
 #c:  demersal destructive fishing
-dem_fishing_diff <- raster(file.path(path, "Pressures2013minus2008/demersal_destructive_fishing_combo_dif"))
+dem_fishing_diff <- raster(file.path(path_trim, "Pressures2013minus2008/demersal_destructive_fishing_combo_dif"))
 histogram(dem_fishing_diff, main="demersal destructive fishing: 2013 minus 2008")
 cols = colorRampPalette(brewer.pal(11, 'Spectral'))(255)
 plot(dem_fishing_diff, col=rev(cols), axes=FALSE, box=FALSE)
 
-pdf('/var/data/ohi/git-annex/Global/NCEAS-Pressures-Summaries_frazier2013/ResultMaps/Fig3c.demersal_destructive_fishing_diff.pdf')  #, width=1200, height=1000, res=150, pointsize=14)
+png(file.path(path_save, 'Fig3c.demersal_diff.png'), res=500, width=7, height=7, units="in")
+#pdf('/var/data/ohi/git-annex/Global/NCEAS-Pressures-Summaries_frazier2013/ResultMaps/Fig3c.demersal_destructive_fishing_diff.pdf')  #, width=1200, height=1000, res=150, pointsize=14)
 my_breaks <- c(-0.5, -0.2, -0.15, -0.10, -0.05, 0, 0.05, 0.10, 0.15, 0.2, 0.7)
 cols = colorRampPalette(brewer.pal(11, 'Spectral'))(length(my_breaks)-1)
 plot(dem_fishing_diff, col=rev(cols), axes=FALSE, box=FALSE, breaks=my_breaks, legend=FALSE)
@@ -255,37 +298,33 @@ plot(dem_fishing_diff, col=rev(cols), axes=FALSE, box=FALSE, breaks=my_breaks, l
 def_breaks <- seq(min(my_breaks), max(my_breaks), length.out=length(my_breaks))
 image.plot(dem_fishing_diff, zlim = c(min(my_breaks), max(my_breaks)), 
            legend.only = TRUE, 
-           legend.shrink=0.7 ,
+           legend.shrink=0.5,
+           legend.width=0.6,
            col = rev(cols),
-           axis.args = list(at = def_breaks, labels = my_breaks))
+           axis.args = list(at = def_breaks, labels = my_breaks, cex.axis=1))
 
 # add land layer
-plot(land, add=TRUE, border="gray85", col="gray90")
+plot(land, add=TRUE, border="gray80", col="gray90", lwd=0.5)
 dev.off()
 
 
 #d:  pelagic fishing
-pel_fishing_diff <- raster(file.path(path, "Pressures2013minus2008/pelagic_high_bycatch_combo_dif"))
+pel_fishing_diff <- raster(file.path(path_trim, "Pressures2013minus2008/pelagic_high_bycatch_combo_dif"))
 histogram(pel_fishing_diff, main="pelagic high-bycatch: 2013 minus 2008")
 plot(pel_fishing_diff)
 
-pdf('/var/data/ohi/git-annex/Global/NCEAS-Pressures-Summaries_frazier2013/ResultMaps/Fig3c.pelagic_high_bycatch_fishing_diff.pdf')  #, width=1200, height=1000, res=150, pointsize=14)
+png(file.path(path_save, 'Fig3d.pelagic_diff.png'), res=500, width=7, height=7, units="in")
 my_breaks <- c(-0.53, -0.2, -0.10, -0.075, -0.05, -0.025, 0, 0.025, 0.05, 0.075, 0.10, 0.2, 0.31)
 cols = colorRampPalette(brewer.pal(11, 'Spectral'))(length(my_breaks)-1)
 plot(pel_fishing_diff, col=rev(cols), axes=FALSE, box=FALSE, breaks=my_breaks, legend=FALSE)
-#     axis.args=list(at=c(-0.4, -0.2, -0.1, 0, 0.1, 0.2, 0.4), labels=c("<-0.4", "-0.2", "-0.1", "0", "0.1", "0.2", ">0.4")))
-
 # add axis with fields package function:
 def_breaks <- seq(min(my_breaks), max(my_breaks), length.out=length(my_breaks))
 image.plot(dem_fishing_diff, zlim = c(min(my_breaks), max(my_breaks)), 
            legend.only = TRUE, 
-           legend.shrink=0.7 ,
+           legend.shrink=0.5,
+           legend.width=0.6,
            col = rev(cols),
-           axis.args = list(at = def_breaks, labels = my_breaks))
-
-
-cols = colorRampPalette(brewer.pal(11, 'Spectral'))(255)
-plot(pel_fishing_diff, col=rev(cols), axes=FALSE, box=FALSE)
+           axis.args = list(at = def_breaks, labels = my_breaks, cex.axis=1))
 plot(land, add=TRUE, border="gray85", col="gray90")
 dev.off()
 
