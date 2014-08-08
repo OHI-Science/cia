@@ -166,6 +166,45 @@ fao_extract <- function(stack=stack, fileOutput= "test.csv"){
 ########################################################
 tifs = list.files(file.path(rasters, 'global_impact_model_2013/normalized_by_one_time_period/averaged_by_num_ecosystems/by_threat'), pattern=glob2rx('*.tif'))
 
+#####################################
+### trouble shooting for Ben----
+#####################################
+op <- raster(file.path(rasters, 'impact_layers/final_impact_layers/threats_2013_final/normalized_by_one_time_period/ocean_pollution.tif'))
+ship <- raster(file.path(rasters, 'impact_layers/final_impact_layers/threats_2013_final/normalized_by_one_time_period/shipping.tif'))
+
+hs <- readOGR(dsn=file.path(myFiles, "RegionMaps/FAO_regions"), layer="FAO_rgns_mol")
+rasterize(hs, op, 
+          field="rgn_id", 
+          filename=file.path(myFiles, "RegionMaps/FAO_regions/FAO_raster_oceanPoll"), 
+          progress="text")
+
+fao_rast_oceanPoll <- raster(file.path(myFiles, "RegionMaps/FAO_regions/FAO_raster_oceanPoll")) 
+fao_data_op <- zonal(op,  fao_rast_oceanPoll, fun='mean', progress="text")
+
+
+
+
+fao_rast <- raster(file.path(myFiles, 'RegionMaps/FAO_regions/FAO_raster'))
+fao_poly_data <- read.csv(file.path(dir_neptune_data, "model/GL-NCEAS-OceanRegions_v2013a/data/rgn_details.csv"))
+
+# resample(op, ship, method='ngb', 
+# filename=file.path(dir_neptune_data, "git-annex/Global/NCEAS-Pressures-Summaries_frazier2013/op_resampled"), 
+# progress="text")
+
+op2 <- raster(file.path(dir_neptune_data, "git-annex/Global/NCEAS-Pressures-Summaries_frazier2013/op_resampled"))
+data <- stack(op2, ship)
+
+fao_data <- zonal(data,  fao_rast, fun='mean', progress="text")
+fao_data_df <- data.frame(fao_data)
+setdiff(fao_data_df$zone, fao_poly_data$rgn_id)
+setdiff(fao_poly_data$rgn_id, fao_data_df$zone)
+
+fao_data2 <- merge(fao_poly_data, fao_data_df, by.x="rgn_id", by.y="zone")
+fao_id <- data.frame(rgn_id=fao_data2$rgn_id, fao_id=c(18, 21, 27, 31, 34, 41, 47, 48, 51, 57, 58, 61, 67, 71, 77, 81, 87, 88))
+fao_data3 <- merge(fao_id, fao_data2, by="rgn_id")
+
+####################
+
 stack_2013_one <- stack()
 for(i in 1:length(tifs)){
   tmp <- raster(file.path(rasters, 'global_impact_model_2013/normalized_by_one_time_period/averaged_by_num_ecosystems/by_threat', tifs[i]))
