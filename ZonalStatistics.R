@@ -37,9 +37,9 @@ if (!file.exists(dir_out)) dir.create(dir_out, showWarnings=F) #create the direc
 ## Preparing zone data ----
 ## (should only need to be done once)
 ################################################
-# #convert to raster
-# global_cumulative_impact_2013_minus_2008 <- raster("\\\\neptune\\halpern2008\\mnt\\storage\\marine_threats\\impact_layers_2013_redo\\difference_2008_2013\\averaged_by_num_ecosystems\\cumulative\\global_cumulative_impact_2013_minus_2008.tif")
-# plot(global_cumulative_impact_2013_minus_2008)
+#convert to raster
+global_cumulative_impact_2013_minus_2008 <- raster(file.path(rasters, "global_impact_difference_2008_2013/normalized_by_two_time_periods/averaged_by_num_ecosystems/cumulative/global_cumul_impact_2013_minus_2008.tif"))
+plot(global_cumulative_impact_2013_minus_2008)
 
 ## MEOW shp file: downloaded from http://www.marineregions.org/downloads.php
 ## on Jan 3, 2014 
@@ -80,7 +80,16 @@ if (!file.exists(dir_out)) dir.create(dir_out, showWarnings=F) #create the direc
 #          overwrite=TRUE,
 #          progress="text")
 
+# file from Ben H. 8/20/2014 transformed from gcs (wgs84) to mollweide in ARC
+warm <- readOGR(dsn=file.path(myFiles, "RegionMaps/WARM"), layer="WARM_mol")
+plot(warm, add=TRUE)
+rasterize(warm, global_cumulative_impact_2013_minus_2008, 
+         field="ProvCode", 
+         filename= file.path(myFiles, "RegionMaps/WARM/WARM_raster"), 
+         overwrite=TRUE,
+         progress="text")
 
+plot(raster(file.path(myFiles, "RegionMaps/WARM/WARM_raster")))
 
 ############################################################################
 ## Altering extent (no longer necessary for current rasters)
@@ -160,50 +169,66 @@ fao_extract <- function(stack=stack, fileOutput= "test.csv"){
 }
 
 
+## WARM
+warm_extract <- function(stack=stack, fileOutput="test.csv"){
+  warm_rast <- raster(file.path(myFiles, "RegionMaps/WARM/WARM_raster"))
+  warm_poly <- readOGR(dsn=file.path(myFiles, "RegionMaps/WARM"), layer="WARM_mol")
+  warm_poly_data <- warm_poly@data
+  
+  warm_data <- zonal(stack,  warm_rast, fun='mean', progress="text")
+  warm_data_df <- data.frame(warm_data)
+  setdiff(warm_data_df$zone, warm_poly_data$ProvCode)
+  setdiff(warm_poly_data$ProvCode, warm_data_df$zone)
+  
+  warm_data2 <- merge(warm_poly_data, warm_data_df, by.x="ProvCode", by.y="zone")
+  write.csv(warm_data, file.path(dir_out, fileOutput), row.names=FALSE)  
+}
+
+
 ########################################################
 # 2013/normalized one time period/averaged by num ecosystems ---- 
 # NOTE:  This is the most complete data for 2013, but can't be compared to 2008 data
 ########################################################
 tifs = list.files(file.path(rasters, 'global_impact_model_2013/normalized_by_one_time_period/averaged_by_num_ecosystems/by_threat'), pattern=glob2rx('*.tif'))
 
-#####################################
-### trouble shooting for Ben----
-#####################################
-op <- raster(file.path(rasters, 'impact_layers/final_impact_layers/threats_2013_final/normalized_by_one_time_period/ocean_pollution.tif'))
-ship <- raster(file.path(rasters, 'impact_layers/final_impact_layers/threats_2013_final/normalized_by_one_time_period/shipping.tif'))
-
-hs <- readOGR(dsn=file.path(myFiles, "RegionMaps/FAO_regions"), layer="FAO_rgns_mol")
-rasterize(hs, op, 
-          field="rgn_id", 
-          filename=file.path(myFiles, "RegionMaps/FAO_regions/FAO_raster_oceanPoll"), 
-          progress="text")
-
-fao_rast_oceanPoll <- raster(file.path(myFiles, "RegionMaps/FAO_regions/FAO_raster_oceanPoll")) 
-fao_data_op <- zonal(op,  fao_rast_oceanPoll, fun='mean', progress="text")
-
-
-
-
-fao_rast <- raster(file.path(myFiles, 'RegionMaps/FAO_regions/FAO_raster'))
-fao_poly_data <- read.csv(file.path(dir_neptune_data, "model/GL-NCEAS-OceanRegions_v2013a/data/rgn_details.csv"))
-
-# resample(op, ship, method='ngb', 
-# filename=file.path(dir_neptune_data, "git-annex/Global/NCEAS-Pressures-Summaries_frazier2013/op_resampled"), 
-# progress="text")
-
-op2 <- raster(file.path(dir_neptune_data, "git-annex/Global/NCEAS-Pressures-Summaries_frazier2013/op_resampled"))
-data <- stack(op2, ship)
-
-fao_data <- zonal(data,  fao_rast, fun='mean', progress="text")
-fao_data_df <- data.frame(fao_data)
-setdiff(fao_data_df$zone, fao_poly_data$rgn_id)
-setdiff(fao_poly_data$rgn_id, fao_data_df$zone)
-
-fao_data2 <- merge(fao_poly_data, fao_data_df, by.x="rgn_id", by.y="zone")
-fao_id <- data.frame(rgn_id=fao_data2$rgn_id, fao_id=c(18, 21, 27, 31, 34, 41, 47, 48, 51, 57, 58, 61, 67, 71, 77, 81, 87, 88))
-fao_data3 <- merge(fao_id, fao_data2, by="rgn_id")
-
-####################
+# #####################################
+# ### trouble shooting for Ben----
+# #####################################
+# op <- raster(file.path(rasters, 'impact_layers/final_impact_layers/threats_2013_final/normalized_by_one_time_period/ocean_pollution.tif'))
+# ship <- raster(file.path(rasters, 'impact_layers/final_impact_layers/threats_2013_final/normalized_by_one_time_period/shipping.tif'))
+# 
+# hs <- readOGR(dsn=file.path(myFiles, "RegionMaps/FAO_regions"), layer="FAO_rgns_mol")
+# rasterize(hs, op, 
+#           field="rgn_id", 
+#           filename=file.path(myFiles, "RegionMaps/FAO_regions/FAO_raster_oceanPoll"), 
+#           progress="text")
+# 
+# fao_rast_oceanPoll <- raster(file.path(myFiles, "RegionMaps/FAO_regions/FAO_raster_oceanPoll")) 
+# fao_data_op <- zonal(op,  fao_rast_oceanPoll, fun='mean', progress="text")
+# 
+# 
+# 
+# 
+# fao_rast <- raster(file.path(myFiles, 'RegionMaps/FAO_regions/FAO_raster'))
+# fao_poly_data <- read.csv(file.path(dir_neptune_data, "model/GL-NCEAS-OceanRegions_v2013a/data/rgn_details.csv"))
+# 
+# # resample(op, ship, method='ngb', 
+# # filename=file.path(dir_neptune_data, "git-annex/Global/NCEAS-Pressures-Summaries_frazier2013/op_resampled"), 
+# # progress="text")
+# 
+# op2 <- raster(file.path(dir_neptune_data, "git-annex/Global/NCEAS-Pressures-Summaries_frazier2013/op_resampled"))
+# data <- stack(op2, ship)
+# 
+# fao_data <- zonal(data,  fao_rast, fun='mean', progress="text")
+# fao_data_df <- data.frame(fao_data)
+# setdiff(fao_data_df$zone, fao_poly_data$rgn_id)
+# setdiff(fao_poly_data$rgn_id, fao_data_df$zone)
+# 
+# fao_data2 <- merge(fao_poly_data, fao_data_df, by.x="rgn_id", by.y="zone")
+# fao_id <- data.frame(rgn_id=fao_data2$rgn_id, fao_id=c(18, 21, 27, 31, 34, 41, 47, 48, 51, 57, 58, 61, 67, 71, 77, 81, 87, 88))
+# fao_data3 <- merge(fao_id, fao_data2, by="rgn_id")
+# 
+# ####################
 
 stack_2013_one <- stack()
 for(i in 1:length(tifs)){
@@ -220,8 +245,10 @@ meow_extract(stack=stack_2013_one, fileOutput="oneYearNorm_2013_meow.csv")
 lme_extract(stack=stack_2013_one, fileOutput="oneYearNorm_2013_lme.csv")          
 eez_extract(stack=stack_2013_one, fileOutput="oneYearNorm_2013_eez.csv")
 fao_extract(stack=stack_2013_one, fileOutput="oneYearNorm_2013_fao.csv")
+warm_extract(stack=stack_2013_one, fileOutput="oneYearNorm_2013_warm.csv")
 
-########################################################
+
+ ########################################################
 # 2013/normalized two time periods/averaged by num ecosystems ---- 
 # NOTE:  This does not contain shipping, invasives, ocean pollution, slr
 #         These are comparable with the 2008 data
@@ -243,13 +270,14 @@ meow_extract(stack=stack_2013_two, fileOutput="twoYearNorm_2013_meow.csv")
 lme_extract(stack=stack_2013_two, fileOutput="twoYearNorm_2013_lme.csv")          
 eez_extract(stack=stack_2013_two, fileOutput="twoYearNorm_2013_eez.csv")
 fao_extract(stack=stack_2013_two, fileOutput="twoYearNorm_2013_fao.csv")
+warm_extract(stack=stack_2013_two, fileOutput="twoYearNorm_2013_warm.csv")
 
 
 ########################################################
 # 2008/normalized two time periods/averaged by num ecosystems ---- 
 # NOTE:  This is the most complete data for 2013, but can't be compared to 2008 data
 ########################################################
-tifs = list.files(file.path(rasters, 'global_impact_model_2008/normalized_by_two_time_periods/averaged_by_num_ecosystems/by_threat'), pattern=glob2rx('*.tif'))
+ tifs = list.files(file.path(rasters, 'global_impact_model_2008/normalized_by_two_time_periods/averaged_by_num_ecosystems/by_threat'), pattern=glob2rx('*.tif'))
 
 stack_2008_two <- stack()
 for(i in 1:length(tifs)){
@@ -266,7 +294,7 @@ meow_extract(stack=stack_2008_two, fileOutput="twoYearNorm_2008_meow.csv")
 lme_extract(stack=stack_2008_two, fileOutput="twoYearNorm_2008_lme.csv")          
 eez_extract(stack=stack_2008_two, fileOutput="twoYearNorm_2008_eez.csv")
 fao_extract(stack=stack_2008_two, fileOutput="twoYearNorm_2008_fao.csv")
-
+  
 
 #########################################################
 # Summarize historical 2008 data by EEZ (ben request:7/18/014 ) ----
