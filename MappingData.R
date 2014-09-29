@@ -13,15 +13,24 @@ library(sp)
 library(maptools)
 library(rgeos)
 library(plotKML)
-library(plyr)
+library(dplyr)
 library(rasterVis)
 library(RColorBrewer)
 library(fields)
+library(ggplot2)
+
+myTheme <- theme_bw() + theme(axis.text=element_text(size=20), 
+                              axis.title=element_text(size=20, vjust=.15),
+                              plot.margin=unit(c(1,1,1,1), "lines"),
+                              legend.title = element_text(size=20),
+                              legend.text= element_text(size=20),
+                              plot.title = element_text(lineheight=.8, size=20),
+                              strip.text.x = element_text(size = 18)) 
 
 #paths:
-path <- '/var/data/ohi/git-annex/Global/NCEAS-Pressures-Summaries_frazier2013/'
-path_trim <- "/var/data/ohi/git-annex/Global/NCEAS-Pressures-Summaries_frazier2013/TrimmedPressureLayers/"
-path_save <- "/var/data/ohi/git-annex/Global/NCEAS-Pressures-Summaries_frazier2013/ResultMaps/"
+path <- '/var/data/ohi/git-annex/Global/NCEAS-Pressures-Summaries_frazier2013'
+path_trim <- "/var/data/ohi/git-annex/Global/NCEAS-Pressures-Summaries_frazier2013/TrimmedPressureLayers"
+path_save <- "/var/data/ohi/git-annex/Global/NCEAS-Pressures-Summaries_frazier2013/ResultMaps"
 
 # land layer for plots ----
 rgn_ocn_cntry <- readOGR("/var/data/ohi/model/GL-NCEAS-OceanRegions_v2013a/data", layer="rgn_ocean_cntry_mol")
@@ -332,69 +341,87 @@ dev.off()
 ## SOM Fig. 1: Histogram of per pixel difference scores ----
 
 ## global combined pressures
-pressure_diff <- raster("/var/data/ohi/git-annex/Global/NCEAS-Pressures-Summaries_frazier2013/TrimmedPressureLayers/Pressures2013minus2008/global_cumulative_impact_dif") 
+pressure_diff <- raster(file.path(path_trim, "Pressures2013minus2008/global_cumulative_impact_dif")) 
 
-pdf(pdf('/var/data/ohi/git-annex/Global/NCEAS-Pressures-Summaries_frazier2013/ResultMaps/SOMFig1a.global_hist_diff.pdf')  #, width=1200, height=1000, res=150, pointsize=14))    
-    histogram(pressure_diff, scales=list(y=list(at=NULL)), main="Global cumulative impact score (2013 minus 2008)")
+pdf(file.path(path_save, 'SOMFig1a.global_hist_diff.pdf'))  #, width=1200, height=1000, res=150, pointsize=14))    
+    histogram(pressure_diff, scales=list(y=list(at=NULL)), 
+              main="Global cumulative impact score (2013 minus 2008)")
     dev.off()
     
-    ## individual pressures    
-    path <- "/var/data/ohi/git-annex/Global/NCEAS-Pressures-Summaries_frazier2013/TrimmedPressureLayers/Pressures2013minus2008/"
-    layers <- dir(path)
-    layers <- gsub(".grd", "", layers)
-    layers <- gsub(".gri", "", layers)
-    layers <- unique(layers)
-    layers <- layers[-which(layers == "global_cumulative_impact_dif")]
-    
-    no <- length(layers) # amount of files found
-    imagestack <- stack() # you initialize your raster stack
-    
-    for (i in 1:no){
-      #i=2
-      image <- raster(file.path(path, layers[i])) # fill up raster stack with only the tiffs   
-      imagestack <- addLayer(imagestack,image)
-    }
-    
-    layers <- gsub("_combo_dif", "", layers)
-    layers <- gsub("_", " ", layers)
-    names(imagestack) <- layers
-    
-    pdf(pdf('/var/data/ohi/git-annex/Global/NCEAS-Pressures-Summaries_frazier2013/ResultMaps/SOMFig1b.pressures_diff.pdf')  #, width=1200, height=1000, res=150, pointsize=14))
-        histogram(imagestack, layout=c(3,4))
-        dev.off() 
+## individual pressures    
+layers <- dir(file.path(path_trim, "Pressures2013minus2008"))
+layers <- gsub(".grd", "", layers)
+layers <- gsub(".gri", "", layers)
+layers <- unique(layers)
+layers <- layers[-which(layers == "global_cumulative_impact_dif")]
+
+no <- length(layers) # amount of files found
+imagestack <- stack() # you initialize your raster stack
+
+for (i in 1:no){
+  #i=2
+  image <- raster(file.path(path_trim, "Pressures2013minus2008", layers[i])) # fill up raster stack with only the tiffs   
+  imagestack <- addLayer(imagestack,image)
+}
+
+layers_2 <- gsub("_combo_dif", "", layers)
+layers_2 <- gsub("_", " ", layers)
+names(imagestack) <- layers_2
+
+pdf(file.path(path_save, 'SOMFig1b.pressures_diff.pdf'))  #, width=1200, height=1000, res=150, pointsize=14))
+histogram(imagestack, layout=c(3,4), cex=.7)
+dev.off() 
+
+# plotting each individually:
+for(i in 1:length(layers)){
+  #i <- 2
+  dif <- raster(file.path(path_trim, "Pressures2013minus2008", layers[i]))
+  my_name <- gsub("_combo_dif", "", layers[i])
+  my_name <- gsub("_", " ", my_name)
+  
+  pdf(file.path(path_save, sprintf('Pressures2013minus2008Hists/%s.pdf', my_name)))      
+  histogram(dif, main=my_name, xlab="2013 minus 2008 pressure score")
+  dev.off()
+}
+
+## SOM Fig. 2: Historic 2008 scores vs. new calculation----
+new2008 <- raster(file.path(path, "TrimmedPressureLayers/Pressures2008/global_cumulative_impact_2008_all_layers"))
+old2008 <- raster(file.path(path, "Historical2008_fromWebsite/model/model"))
+
+old2008_crop <- crop(old2008, new2008, progress="text")
+
+compare2008 <- stack(new2008, old2008_crop) 
+names(compare2008) <- c("new2008", "old2008")
+pairs(compare2008)    
+
+png(file.path(path_save, 'SOMFig2.2008compare_scatter.png'))  #, width=1200, height=1000, res=150, pointsize=14))
+raster:plot(new2008, old2008_crop, ylab="old 2008 scores", xlab="new 2008 scores", maxpixels=10000000, col=rgb(0,0,0,0.2))   
+dev.off()    
+
+## SOM Fig. 3a: Scatter plot of average per-pixel ci scores for each eez----
+  # not sure if this is what Ben wanted.....will make and then check....
+
+eez_2008 <- read.csv("ZonalExtractionData/twoYearNorm_2008_eez.csv") %>%
+  select(eez_id, eez_key, eez_nam, sov_id, sov_nam, eez_iso3, 
+         ci_2008=global_cumul_impact_2008_all_layers_except_shipping_oceanpollution_invasives)
+
+eez_2013 <- read.csv("ZonalExtractionData/twoYearNorm_2013_eez.csv") %>%
+  select(eez_id, eez_key, eez_nam, sov_id, sov_nam, eez_iso3, 
+         ci_2013=global_cumul_impact_2013_all_layers_except_shipping_oceanpollution_invasives_slr) %>%
+  left_join(eez_2008)
+
+ggplot(eez_2013, aes(y=ci_2013, x=ci_2008, text= )) +
+  geom_point(shape=19) +
+  geom_rug(alpha=0.2) +
+  geom_abline(slope=1, intercept=0, linetype=2, color="orange") +
+  myTheme +
+  labs(x="2008 Cumulative Impact Scores", y="2013 Cumulative Impact Scores")
         
-        # plotting each individually:
-        for(i in 1:layers){
-          #  i <- 1
-          sst_diff <- raster(file.path(path, "Pressures2013minus2008/sst_combo_dif"))
-          dif <- raster(file.path(path, layers[i]))
-          my_name <- gsub("_combo_dif", "", layers[i])
-          my_name <- gsub("_", " ", my_name)
-          histogram(dif, name=my_name, xlab="2013 minus 2008 pressure score")
-          
-        }
-        
-        ## SOM Fig. 2: Historic 2008 scores vs. new calculation----
-        path <- "/var/data/ohi/git-annex/Global/NCEAS-Pressures-Summaries_frazier2013/"
-        
-        new2008 <- raster(file.path(path, "TrimmedPressureLayers/Pressures2008/global_cumulative_impact_2008_all_layers"))
-        old2008 <- raster(file.path(path, "Historical2008_fromWebsite/model/model"))
-        
-        old2008_crop <- crop(old2008, new2008, progress="text")
-        
-        compare2008 <- stack(new2008, old2008_crop) 
-        names(compare2008) <- c("new2008", "old2008")
-        pairs(compare2008)    
-        
-        pdf('/var/data/ohi/git-annex/Global/NCEAS-Pressures-Summaries_frazier2013/ResultMaps/SOMFig2.2008compare_scatter.pdf')  #, width=1200, height=1000, res=150, pointsize=14))
-        raster:plot(new2008, old2008_crop, ylab="old 2008 scores", xlab="new 2008 scores", maxpixels=10000000, col=rgb(0,0,0,0.2))   
-        dev.off()    
         
         
-        
-        
-        
-        # Code for rasterVis plots....see printouts for understanding how to label histograms
+
+
+         # Code for rasterVis plots....see printouts for understanding how to label histograms
         cols = colorRampPalette(brewer.pal(11, 'Spectral'))(255)
         myTheme = rasterTheme(region=rev(cols))
         myTheme$layout.heights$main=12
