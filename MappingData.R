@@ -14,6 +14,7 @@ library(maptools)
 library(rgeos)
 library(plotKML)
 library(dplyr)
+library(tidyr)
 library(rasterVis)
 library(RColorBrewer)
 library(fields)
@@ -399,7 +400,7 @@ raster:plot(new2008, old2008_crop, ylab="old 2008 scores", xlab="new 2008 scores
 dev.off()    
 
 ## SOM Fig. 3a: Scatter plot of average per-pixel ci scores for each eez----
-  # not sure if this is what Ben wanted.....will make and then check....
+  # note: need to label outliers 
 
 eez_2008 <- read.csv("ZonalExtractionData/twoYearNorm_2008_eez.csv") %>%
   select(eez_id, eez_key, eez_nam, sov_id, sov_nam, eez_iso3, 
@@ -410,15 +411,71 @@ eez_2013 <- read.csv("ZonalExtractionData/twoYearNorm_2013_eez.csv") %>%
          ci_2013=global_cumul_impact_2013_all_layers_except_shipping_oceanpollution_invasives_slr) %>%
   left_join(eez_2008)
 
-ggplot(eez_2013, aes(y=ci_2013, x=ci_2008, text= )) +
+p <- ggplot(eez_2013, aes(y=ci_2013, x=ci_2008)) +
   geom_point(shape=19) +
+  geom_text(aes(label=eez_nam), size=1, hjust=1.1) +
   geom_rug(alpha=0.2) +
   geom_abline(slope=1, intercept=0, linetype=2, color="orange") +
   myTheme +
   labs(x="2008 Cumulative Impact Scores", y="2013 Cumulative Impact Scores")
-        
-        
-        
+print(p) 
+ggsave(file.path(path_save, 'EEZ_2008vs2013_labels.pdf'))
+
+
+## SOM Fig. 3b: Scatter plot of average per-pixel ci scores for each meow----
+
+meow_2008 <- read.csv("ZonalExtractionData/twoYearNorm_2008_meow.csv") %>%
+  select(ECOREGION,  
+         ci_2008=global_cumul_impact_2008_all_layers_except_shipping_oceanpollution_invasives)
+
+meow_2013 <- read.csv("ZonalExtractionData/twoYearNorm_2013_meow.csv") %>%
+  select(ECOREGION, 
+         ci_2013=global_cumul_impact_2013_all_layers_except_shipping_oceanpollution_invasives_slr) %>%
+  left_join(meow_2008)
+
+p <- ggplot(meow_2013, aes(y=ci_2013, x=ci_2008)) +
+  geom_point(shape=19) +
+  geom_text(aes(label=ECOREGION), size=1, hjust=1.1) +
+  geom_rug(alpha=0.2) +
+  geom_abline(slope=1, intercept=0, linetype=2, color="orange") +
+  myTheme +
+  labs(x="2008 Cumulative Impact Scores", y="2013 Cumulative Impact Scores")
+print(p) 
+ggsave(file.path(path_save, 'meow_2008vs2013_labels.pdf'))
+
+
+## SOM Fig. 4: stacked horizontal bar graphs for each eez showing contribution of each stressor type to CI score----
+
+eez_2013 <- read.csv("ZonalExtractionData/oneYearNorm_2013_eez.csv") 
+
+eez_2013  <- eez_2013 %>%
+  mutate(region_id = sprintf("%s (%s)",eez_nam, eez_id)) %>%
+  select(-eez_id, -eez_key, -eez_nam, -sov_id, -sov_nam, -eez_iso3) %>% 
+  gather(pressure, value, c(-region_id, -global_cumul_impact_2013_all_layers)) %>%
+  mutate(pressure = gsub("_combo", "", pressure))
+  
+eez_2013_means  <- eez_2013 %>%
+  group_by(pressure) %>%
+  summarize(mean=mean(value)) %>%
+  arrange(mean)
+ 
+eez_2013 <- eez_2013 %>%
+  mutate(pressure = factor(pressure, levels=eez_2013_means$pressure))
+
+myPalette <- colorRampPalette(brewer.pal(11, "Spectral"), space="Lab")
+
+ggplot(eez_2013, aes(x=factor(region_id, levels=(region_id)[order(global_cumul_impact_2013_all_layers)]), y=value, fill=pressure, order=desc(pressure))) +
+  geom_bar(stat="identity") +
+  scale_fill_manual(values=myPalette(19)) +
+  coord_flip() +
+  theme_bw() +
+  labs(y="Pressure", x="") + 
+  guides(fill=guide_legend(reverse=TRUE)) +
+  theme(axis.text.y=element_text(size=5),
+        legend.justification=c(1,0), legend.position=c(1,0))
+ggsave(file.path(path_save, 'Impacts4EEZs.pdf'), height=20, width=10)
+  
+
 
 
          # Code for rasterVis plots....see printouts for understanding how to label histograms
