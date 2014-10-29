@@ -294,7 +294,32 @@ meow_extract(stack=stack_2008_two, fileOutput="twoYearNorm_2008_meow.csv")
 lme_extract(stack=stack_2008_two, fileOutput="twoYearNorm_2008_lme.csv")          
 eez_extract(stack=stack_2008_two, fileOutput="twoYearNorm_2008_eez.csv")
 fao_extract(stack=stack_2008_two, fileOutput="twoYearNorm_2008_fao.csv")
-  
+
+
+########################################################
+# 2013-2008: normalized two time periods/averaged by num ecosystems ---- 
+########################################################
+tifs = list.files(file.path(rasters, 'global_impact_difference_2008_2013/normalized_by_two_time_periods/averaged_by_num_ecosystems/by_threat'), pattern=glob2rx('*.tif'))
+
+stack_diff_two <- stack()
+for(i in 1:length(tifs)){
+  tmp <- raster(file.path(rasters, 'global_impact_difference_2008_2013/normalized_by_two_time_periods/averaged_by_num_ecosystems/by_threat', tifs[i]))
+  stack_diff_two <- stack(stack_diff_two, tmp )
+}
+
+## Add in the cumulative score:
+stack_diff_two <- stack(stack_diff_two, 
+                        raster(file.path(rasters, 'global_impact_difference_2008_2013/normalized_by_two_time_periods/averaged_by_num_ecosystems/cumulative/global_cumul_impact_2013_minus_2008.tif'))
+)
+
+## Summarize by region
+meow_extract(stack=stack_diff_two, fileOutput="diff_2013minus2008_meow.csv")
+lme_extract(stack=stack_diff_two, fileOutput="diff_2013minus2008_lme.csv")          
+eez_extract(stack=stack_diff_two, fileOutput="diff_2013minus2008_eez.csv")
+fao_extract(stack=stack_diff_two, fileOutput="diff_2013minus2008_fao.csv")
+warm_extract(stack=stack_diff_two, fileOutput="diff_2013minus2008_warm.csv")
+
+
 
 #########################################################
 # Summarize historical 2008 data by EEZ (ben request:7/18/014 ) ----
