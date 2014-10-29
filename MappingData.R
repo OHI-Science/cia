@@ -12,13 +12,19 @@ library(raster)
 library(sp)
 library(maptools)
 library(rgeos)
-library(plotKML)
 library(dplyr)
 library(tidyr)
 library(rasterVis)
 library(RColorBrewer)
 library(fields)
 library(ggplot2)
+library(spatial.tools)
+
+# set temporary directory to folder on neptune disk big enough to handle it
+tmpdir='~/big/R_raster_tmp'
+dir.create(tmpdir, showWarnings=F)
+rasterOptions(tmpdir=tmpdir)
+
 
 myTheme <- theme_bw() + theme(axis.text=element_text(size=20), 
                               axis.title=element_text(size=20, vjust=.15),
@@ -28,10 +34,16 @@ myTheme <- theme_bw() + theme(axis.text=element_text(size=20),
                               plot.title = element_text(lineheight=.8, size=20),
                               strip.text.x = element_text(size = 18)) 
 
+source('~/ohiprep/src/R/common.R')
+
 #paths:
-path <- '/var/data/ohi/git-annex/Global/NCEAS-Pressures-Summaries_frazier2013'
-path_trim <- "/var/data/ohi/git-annex/Global/NCEAS-Pressures-Summaries_frazier2013/TrimmedPressureLayers"
-path_save <- "/var/data/ohi/git-annex/Global/NCEAS-Pressures-Summaries_frazier2013/ResultMaps"
+path <- file.path(dir_neptune_data, 'git-annex/Global/NCEAS-Pressures-Summaries_frazier2013')
+path_trim <- file.path(dir_neptune_data, "git-annex/Global/NCEAS-Pressures-Summaries_frazier2013/TrimmedPressureLayers")
+path_save <- file.path(dir_neptune_data, "git-annex/Global/NCEAS-Pressures-Summaries_frazier2013/ResultMaps")
+
+rasters = file.path(dir_halpern2008, 
+                    'mnt/storage/marine_threats/impact_layers_2013_redo')
+
 
 # land layer for plots ----
 rgn_ocn_cntry <- readOGR("/var/data/ohi/model/GL-NCEAS-OceanRegions_v2013a/data", layer="rgn_ocean_cntry_mol")
@@ -54,6 +66,21 @@ plot(diff_noLand, col=rev(cols), axes=FALSE, box=FALSE, legend.shrink=0.5, legen
 plot(land, add=TRUE, border="gray80", col="gray90", lwd=0.5)
 dev.off()
 
+## determine cells >0
+reclassify(diff_noLand, c(-Inf,0, 0, 
+                          0, Inf, 1),
+           filename=file.path(path, "ModifiedPressureMaps/DiffCounts"), 
+           progress="text")
+
+tmp <- raster(file.path(path, "ModifiedPressureMaps/DiffCounts"))
+freq(tmp, value=1, useNA="no", progress="text")
+freq(tmp, value=0, useNA="no", progress="text")
+
+# clip outter parts
+clip_raster <- raster(file.path(path, "clip_raster"))
+freq(clip_raster, progress="text", value=1)
+
+freq(diff_noLand, value=0, progress="text")
 
 ## Figure 2 ----
 # Part a: Global 2013 scores
@@ -477,6 +504,288 @@ ggsave(file.path(path_save, 'Impacts4EEZs.pdf'), height=20, width=10)
   
 
 
+## SOM Fig. 5: individual pressures----
+# 2013/normalized one time period/averaged by num ecosystems ---- 
+# NOTE:  This is the most complete data for 2013, but can't be compared to 2008 data
+
+## NOTE: no longer doing quantiles so use regular rasters
+tifs = list.files(file.path(path_trim, 'Pressures2013'), pattern=glob2rx('*.gri'))
+tifs <- gsub(".gri", '', tifs)
+
+stack_2013_one <- stack()
+for(i in 1:length(tifs)){
+  tmp <- raster(file.path(file.path(path_trim, 'Pressures2013'), tifs[i]))
+  names(tmp) <- tifs[i]
+  stack_2013_one <- stack(stack_2013_one, tmp )
+}
+
+for(i in 1:length(tifs)){
+png(file.path(path_save, sprintf("Pressures2013_OneYear/%s.png",  tifs[i])), res=500, width=7, height=7, units="in")  
+cols = colorRampPalette(brewer.pal(11, 'Spectral'))(255)
+plot(raster(stack_2013_one, i), col=rev(cols), axes=FALSE, box=FALSE, legend.shrink=0.5, legend.width=0.6, 
+     axis.args=list(cex.axis=1.3))
+title(main=gsub("_", " ", tifs[i]), line=-5)
+plot(land, add=TRUE, border="gray80", col="gray90", lwd=0.5)
+dev.off()
+}
+
+# tried to use quantiles for breakpoints, but didn't work because
+# so many zeros for many pressures
+#test <- quantile(raster(stack_2013_one, 1), probs=seq(0,1,0.1))
+
+
+## SOM Fig. 6: Global map of summed stressor intensity (unweighted by habitat vulnerability)----
+stress_path <- file.path(rasters, 
+                         'impact_layers/final_impact_layers/threats_2013_final/normalized_by_one_time_period')
+
+tifs = list.files(stress_path, 
+                  pattern=glob2rx('*.tif'))
+
+# visualize:
+tmp <- raster(file.path(rasters, 
+                         'impact_layers/final_impact_layers/threats_2013_final/normalized_by_one_time_period/ocean_pollution.tif'))
+plot(tmp)
+
+tifs_1 <- c("demersal_destructive_fishing.tif", "demersal_nondest_high_bycatch.tif", "demersal_nondest_low_bycatch.tif",
+            "ocean_acidification.tif", "pelagic_high_bycatch.tif", "pelagic_low_bycatch.tif", "shipping.tif",
+            "slr.tif", "sst.tif", "uv.tif")  # correct resolution
+
+tifs_2 <- c("artisanal_fishing.tif", "inorganic.tif", "plumes_fert.tif", "plumes_pest.tif", 
+            "invasives.tif", "night_lights.tif", "oil_rigs.tif", "population.tif") # need to fix_extent
+
+tifs_3 <- c("ocean_pollution.tif")
+
+stack_2013_one_raw <- stack()
+for(i in 1:length(tifs_1)){
+  tmp <- raster(file.path(stress_path, tifs_1[i]))
+  stack_2013_one_raw <- stack(stack_2013_one_raw, tmp )
+}
+
+for(i in 1:length(tifs_2)){
+#  i <- 1
+  tmp <- raster(file.path(stress_path, tifs_2[i]))
+  tmp = extend(tmp, raster(stack_2013_one_raw, 1)) 
+  extent(tmp) = extent(raster(stack_2013_one_raw, 1))
+  stack_2013_one_raw <- stack(stack_2013_one_raw, tmp)  
+}
+
+for(i in 1:length(tifs_3)){
+  tmp <- raster(file.path(stress_path, tifs_3[i]))
+  tmp <- modify_raster_margins(tmp, extent_delta=c(1,0,1,0))
+  extent(tmp) = extent(raster(stack_2013_one_raw, 1))
+  stack_2013_one_raw <- stack(stack_2013_one_raw, tmp)  
+}
+
+calc(stack_2013_one_raw, sum, filename = file.path(path_save, "Pressures2013_raw_2013_OneYear/SumRawPressures"), progress="text")
+calc(stack_2013_one_raw, sum, na.rm=TRUE, filename = file.path(path_save, "Pressures2013_raw_2013_OneYear/SumRawPressures_na_rm"), progress="text")
+
+total <- raster(file.path(path_save, "Pressures2013_raw_2013_OneYear/SumRawPressures_na_rm"))
+plot(total)
+
+# clip outter parts
+clip_raster <- raster(file.path(path, "clip_raster"))
+
+s <- stack(total, clip_raster)
+overlay(s, fun=function(x,y) x*y, 
+        filename=file.path(path_save, "Pressures2013_raw_2013_OneYear/SumRawPressures_na_rm_clipped"),
+        progress="text", overwrite=TRUE)
+
+total <- raster(file.path(path_save, "Pressures2013_raw_2013_OneYear/SumRawPressures_na_rm_clipped"))
+
+png(file.path(path_save, "Pressures2013_raw_2013_OneYear/SumRawPressures_na_rm_clipped.png"), res=500, width=7, height=7, units="in")  
+  cols = colorRampPalette(brewer.pal(11, 'Spectral'))(255)
+  plot(total, col=rev(cols), axes=FALSE, box=FALSE, legend.shrink=0.5, legend.width=0.6, 
+       axis.args=list(cex.axis=1.3))
+  title(main="Total stressor intensity", line=-5)
+  plot(land, add=TRUE, border="gray80", col="gray90", lwd=0.5)
+  dev.off()
+
+## SOM Fig. 7: Global map of % contribution of each of 19 stressors to cumulative impact score----
+
+tifs = list.files(file.path(path_trim, 'Pressures2013'), pattern=glob2rx('*.gri'))
+tifs <- gsub(".gri", '', tifs)
+
+stack_2013_one <- stack()
+for(i in 1:length(tifs)){
+  tmp <- raster(file.path(file.path(path_trim, 'Pressures2013'), tifs[i]))
+  names(tmp) <- tifs[i]
+  stack_2013_one <- stack(stack_2013_one, tmp )
+}
+
+ci <- raster(file.path(rasters, "global_impact_model_2013/normalized_by_one_time_period/averaged_by_num_ecosystems/all_layers/global_cumul_impact_2013_all_layers.tif"))
+
+for(i in 1:length(names(stack_2013_one))){
+#i <- 2
+  s <- stack(raster(stack_2013_one, i),
+             ci)
+  overlay(s, fun=function(a,b) (a/b)*100, 
+                filename=file.path(path, sprintf("PercentContribution2CI/%s_pctContribution", names(stack_2013_one)[i])),
+                progress="text", overwrite=TRUE)
+}
+
+
+tifs = list.files(file.path(path, "PercentContribution2CI"), pattern=glob2rx('*.gri'))
+tifs <- gsub(".gri", '', tifs)
+
+stack_2013_one_percentContrib <- stack()
+for(i in 1:length(tifs)){
+  tmp <- raster(file.path(path, "PercentContribution2CI", tifs[i]))
+  names(tmp) <- tifs[i]
+  stack_2013_one_percentContrib <- stack(stack_2013_one_percentContrib, tmp )
+}
+
+p.strip <- list(cex=.6, lines=2) 
+cols = colorRampPalette(brewer.pal(11, 'Spectral'))(255)
+myTheme = rasterTheme(region=rev(cols))
+
+png(file.path(path_save, "PercentContributions2013_oneYear/pct_contribution.png"), 
+    width=6, height=9, units='in', res=2500)
+p=levelplot(stack_2013_one_percentContrib, par.settings=myTheme, 
+            scales=list(draw=FALSE), layout=c(3,7), 
+            labels=list(cex=0.2),
+            par.strip.text=p.strip,
+            names.attr=gsub("_", " ", 
+                            gsub("_combo_pctContribution", "", names(stack_2013_one_percentContrib)))) +
+  layer(sp.polygons(land, lwd=0.8, fill="gray80", col="gray85")) 
+print(p)
+dev.off()
+
+
+# for(i in 1:length(tifs)){
+#   png(file.path(path_save, sprintf("PercentContributions2013_oneYear/%s_2013_pct_contribution.png",  tifs[i])), res=500, width=7, height=7, units="in")  
+#   cols = colorRampPalette(brewer.pal(11, 'Spectral'))(255)
+#   plot(raster(stack_2013_one, i), col=rev(cols), axes=FALSE, box=FALSE, legend.shrink=0.5, legend.width=0.6, 
+#        axis.args=list(cex.axis=1.3))
+#   title(main=gsub("_", " ", tifs[i]), line=-5)
+#   plot(land, add=TRUE, border="gray80", col="gray90", lwd=0.5)
+#   dev.off()
+# }
+
+
+
+
+## SOM Fig. 8: Global map of # of non-zero stressors in each pixel----
+
+tifs = list.files(file.path(path_trim, 'Pressures2013'), pattern=glob2rx('*.gri'))
+tifs <- gsub(".gri", '', tifs)
+
+stack_2013_one <- stack()
+for(i in 1:length(tifs)){
+  tmp <- raster(file.path(file.path(path_trim, 'Pressures2013'), tifs[i]))
+  names(tmp) <- tifs[i]
+  stack_2013_one <- stack(stack_2013_one, tmp )
+}
+
+plot(raster(stack_2013_one, 2))
+
+for(i in 1:length(tifs)){
+  #i <- 1
+  reclassify(raster(stack_2013_one, i), c(-Inf, 0, 0,
+                                          0, Inf, 1), 
+             filename=file.path(path, 
+              sprintf('ModifiedPressureMaps/ZeroOneClassification/%s_ZeroClassify', tifs[i])),
+             progress="text")
+}
+
+tifs = list.files(file.path(path, 'ModifiedPressureMaps/ZeroOneClassification'), pattern=glob2rx('*.gri'))
+
+stack_2013_ZeroOne <- stack()
+for(i in 1:length(tifs)){
+  tmp <- raster(file.path(file.path(path, 'ModifiedPressureMaps/ZeroOneClassification'), tifs[i]))
+  names(tmp) <- tifs[i]
+  stack_2013_ZeroOne <- stack(stack_2013_ZeroOne, tmp )
+}
+
+plot(raster(stack_2013_ZeroOne, 19))
+
+calc(stack_2013_ZeroOne, sum, na.rm=TRUE, 
+     filename = file.path(path, "ModifiedPressureMaps/SumZeroOneData"), 
+     progress="text", overwrite=TRUE)
+
+tmp <- raster(file.path(path, "ModifiedPressureMaps/SumZeroOneData"))
+
+# clip outter parts
+clip_raster <- raster(file.path(path, "clip_raster"))
+
+s <- stack(tmp, clip_raster)
+overlay(s, fun=function(x,y) x*y, 
+        filename=file.path(path, "ModifiedPressureMaps/SumZeroOneData_clipped"),
+        progress="text", overwrite=TRUE)
+
+tmp <- raster(file.path(path, "ModifiedPressureMaps/SumZeroOneData_clipped"))
+freq(tmp, value=0, useNA="no", progress="text")  #2388249
+freq(tmp, value=1, useNA="no", progress="text")  #7212563
+
+png(file.path(path_save, "SumNonZeroPressures.png"), res=500, width=7, height=7, units="in")  
+cols = colorRampPalette(brewer.pal(11, 'Spectral'))(255)
+plot(tmp, col=rev(cols), axes=FALSE, box=FALSE, legend.shrink=0.5, legend.width=0.6, 
+     axis.args=list(cex.axis=1.3))
+title(main="Sum of non-zero cells", line=-5)
+plot(land, add=TRUE, border="gray80", col="gray90", lwd=0.5)
+dev.off()
+
+## SOM Fig. 9: Global map of # of non-NA stressors in each pixel----
+
+tifs = list.files(file.path(path_trim, 'Pressures2013'), pattern=glob2rx('*.gri'))
+tifs <- gsub(".gri", '', tifs)
+
+stack_2013_one <- stack()
+for(i in 1:length(tifs)){
+  tmp <- raster(file.path(file.path(path_trim, 'Pressures2013'), tifs[i]))
+  names(tmp) <- tifs[i]
+  stack_2013_one <- stack(stack_2013_one, tmp )
+}
+
+plot(raster(stack_2013_one, 18))
+
+for(i in 1:length(tifs)){  
+#  i <- 2
+  reclassify(raster(stack_2013_one, i), c(-Inf, Inf, 1),
+             filename=file.path(path, 
+                                sprintf('ModifiedPressureMaps/NAClassification/%s_NAclassify', tifs[i])),
+             progress="text", overwrite=TRUE)
+}
+
+tifs = list.files(file.path(path, 'ModifiedPressureMaps/NAClassification'), pattern=glob2rx('*.gri'))
+
+stack_2013_NAs <- stack()
+for(i in 1:length(tifs)){
+  tmp <- raster(file.path(file.path(path, 'ModifiedPressureMaps/NAClassification'), tifs[i]))
+  names(tmp) <- tifs[i]
+  stack_2013_NAs <- stack(stack_2013_NAs, tmp )
+}
+
+
+plot(raster(stack_2013_NAs, 1))
+
+
+calc(stack_2013_NAs, sum, na.rm=TRUE, 
+     filename = file.path(path, "ModifiedPressureMaps/SumNonNAs"), 
+     progress="text", overwrite=TRUE)
+
+tmp <- raster(file.path(path, "ModifiedPressureMaps/SumNonNAs"))
+plot(tmp)
+
+# clip outter parts
+clip_raster <- raster(file.path(path, "clip_raster"))
+
+s <- stack(tmp, clip_raster)
+overlay(s, fun=function(x,y) x*y, 
+        filename=file.path(path, "ModifiedPressureMaps/SumZeroOneData_clipped"),
+        progress="text", overwrite=TRUE)
+
+tmp <- raster(file.path(path, "ModifiedPressureMaps/SumZeroOneData_clipped"))
+
+png(file.path(path_save, "SumNonZeroPressures.png"), res=500, width=7, height=7, units="in")  
+cols = colorRampPalette(brewer.pal(11, 'Spectral'))(255)
+plot(tmp, col=rev(cols), axes=FALSE, box=FALSE, legend.shrink=0.5, legend.width=0.6, 
+     axis.args=list(cex.axis=1.3))
+title(main="Sum of non-zero cells", line=-5)
+plot(land, add=TRUE, border="gray80", col="gray90", lwd=0.5)
+dev.off()
+
+ 
+
 
          # Code for rasterVis plots....see printouts for understanding how to label histograms
         cols = colorRampPalette(brewer.pal(11, 'Spectral'))(255)
@@ -848,4 +1157,21 @@ ggsave(file.path(path_save, 'Impacts4EEZs.pdf'), height=20, width=10)
     ################################################################
     
     
-    
+
+
+tmp <- raster(file.path(dir_halpern2008, 
+          '/mnt/storage/marine_threats/impact_layers_2013_redo',
+          '/global_impact_model_2013/normalized_by_one_time_period/averaged_by_num_ecosystems/by_threat/oil_rigs_combo.tif'))
+plot(tmp)    
+
+
+tmp <- raster(file.path(dir_halpern2008, 
+                        '/mnt/storage/marine_threats/impact_layers_2013_redo',
+                        '/global_impact_model_2013/normalized_by_one_time_period/averaged_by_num_ecosystems/by_threat/night_lights_combo.tif'))
+plot(tmp)    
+
+tmp <- raster(file.path(dir_halpern2008, 
+                        '/mnt/storage/marine_threats/impact_layers_2013_redo',
+                        '/global_impact_model_2013/normalized_by_one_time_period/averaged_by_num_ecosystems/by_threat/slr_combo.tif'))
+plot(tmp)    
+
