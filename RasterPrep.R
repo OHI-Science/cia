@@ -58,6 +58,10 @@ clipLayer <- function(layer, file){
           progress="text", overwrite=TRUE)
 }
 
+rasters = file.path(dir_halpern2008, 
+                    'mnt/storage/marine_threats/impact_layers_2013_redo')
+
+
 ##----------------------------------------------------------------------------------------------------
 ## 2013 data ----
 ##--------------------------------------------------------------------------------------------------
@@ -130,6 +134,65 @@ clipLayer("uv_combo", saveLocation)
 global_cumulative_impact_2013_all_layers <- raster("all_layers/global_cumul_impact_2013_all_layers.tif")
 clipLayer("global_cumulative_impact_2013_all_layers", saveLocation)
 
+#########################################
+###  2013 two years standardized ----
+dir_2013_2 <- file.path(dir_halpern2008, 
+                '/mnt/storage/marine_threats/impact_layers_2013_redo',
+                'global_impact_model_2013/normalized_by_two_time_periods/averaged_by_num_ecosystems')
+
+saveLocation <- "/var/data/ohi/git-annex/Global/NCEAS-Pressures-Summaries_frazier2013/TrimmedPressureLayers/Pressures2013_two_years/"
+
+# load and check pressures layers
+artisanal_fishing_combo <- raster(file.path(dir_2013_2, "by_threat/artisanal_fishing_combo.tif"))
+clipLayer("artisanal_fishing_combo", saveLocation)
+
+demersal_destructive_fishing_combo <- raster(file.path(dir_2013_2, "by_threat/demersal_destructive_fishing_combo.tif"))
+clipLayer("demersal_destructive_fishing_combo", saveLocation)
+
+demersal_nondest_high_bycatch_combo <- raster(file.path(dir_2013_2, "by_threat/demersal_nondest_high_bycatch_combo.tif"))
+clipLayer("demersal_nondest_high_bycatch_combo", saveLocation)
+
+demersal_nondest_low_bycatch_combo <- raster(file.path(dir_2013_2, "by_threat/demersal_nondest_low_bycatch_combo.tif"))
+clipLayer("demersal_nondest_low_bycatch_combo", saveLocation)
+
+inorganic_combo <- raster(file.path(dir_2013_2, "by_threat/inorganic_combo.tif"))
+clipLayer("inorganic_combo", saveLocation)
+
+night_lights_combo <- raster(file.path(dir_2013_2, "by_threat/night_lights_combo.tif"))
+clipLayer("night_lights_combo", saveLocation)
+
+ocean_acidification_combo <- raster(file.path(dir_2013_2, "by_threat/ocean_acidification_combo.tif"))
+clipLayer("ocean_acidification_combo", saveLocation)
+
+oil_rigs_combo <- raster(file.path(dir_2013_2, "by_threat/oil_rigs_combo.tif"))
+clipLayer("oil_rigs_combo", saveLocation)
+
+pelagic_high_bycatch_combo <- raster(file.path(dir_2013_2, "by_threat/pelagic_high_bycatch_combo.tif"))
+clipLayer("pelagic_high_bycatch_combo", saveLocation)
+
+pelagic_low_bycatch_combo <-  raster(file.path(dir_2013_2, "by_threat/pelagic_low_bycatch_combo.tif"))
+clipLayer("pelagic_low_bycatch_combo", saveLocation)
+
+plumes_fert_combo <- raster(file.path(dir_2013_2, "by_threat/plumes_fert_combo.tif"))
+clipLayer("plumes_fert_combo", saveLocation)
+
+plumes_pest_combo <- raster(file.path(dir_2013_2, "by_threat/plumes_pest_combo.tif"))
+clipLayer("plumes_pest_combo", saveLocation)
+
+population_combo <- raster(file.path(dir_2013_2, "by_threat/population_combo.tif"))
+clipLayer("population_combo", saveLocation)
+
+
+sst_combo <- raster(file.path(dir_2013_2, "by_threat/sst_combo.tif"))
+clipLayer("sst_combo", saveLocation)
+
+uv_combo <- raster(file.path(dir_2013_2, "by_threat/uv_combo.tif"))
+clipLayer("uv_combo", saveLocation)
+
+
+
+
+
 ##----------------------------------------------------------------------------------------------------
 ## 2008 data ----
 ##--------------------------------------------------------------------------------------------------
@@ -146,6 +209,56 @@ global_cumulative_impact_2008_all_layers <- raster("all_layers_except_shipping_o
 clipLayer("global_cumulative_impact_2008_all_layers", saveLocation)
 
 
+## get the other layers:
+dir_2008 <- file.path(dir_halpern2008, 
+                'mnt/storage/marine_threats/impact_layers_2013_redo',
+                'global_impact_model_2008/normalized_by_two_time_periods/averaged_by_num_ecosystems/by_threat')
+
+# load and check pressures layers
+artisanal_fishing_combo <- raster(file.path(dir_2008, "artisanal_fishing_combo.tif"))
+clipLayer("artisanal_fishing_combo", saveLocation)
+
+demersal_destructive_fishing_combo <- raster(file.path(dir_2008, "demersal_destructive_fishing_combo.tif"))
+clipLayer("demersal_destructive_fishing_combo", saveLocation)
+
+demersal_nondest_high_bycatch_combo <- raster(file.path(dir_2008, "demersal_nondest_high_bycatch_combo.tif"))
+clipLayer("demersal_nondest_high_bycatch_combo", saveLocation)
+
+demersal_nondest_low_bycatch_combo <- raster(file.path(dir_2008, "demersal_nondest_low_bycatch_combo.tif"))
+clipLayer("demersal_nondest_low_bycatch_combo", saveLocation)
+
+inorganic_combo <- raster(file.path(dir_2008, "inorganic_combo.tif"))
+clipLayer("inorganic_combo", saveLocation)
+
+night_lights_combo <- raster(file.path(dir_2008, "night_lights_combo.tif"))
+clipLayer("night_lights_combo", saveLocation)
+
+ocean_acidification_combo <- raster(file.path(dir_2008, "ocean_acidification_combo.tif"))
+clipLayer("ocean_acidification_combo", saveLocation)
+
+oil_rigs_combo <- raster(file.path(dir_2008, "oil_rigs_combo.tif"))
+clipLayer("oil_rigs_combo", saveLocation)
+
+pelagic_high_bycatch_combo <- raster(file.path(dir_2008, "pelagic_high_bycatch_combo.tif"))
+clipLayer("pelagic_high_bycatch_combo", saveLocation)
+
+pelagic_low_bycatch_combo <- raster(file.path(dir_2008, "pelagic_low_bycatch_combo.tif"))
+clipLayer("pelagic_low_bycatch_combo", saveLocation)
+
+plumes_fert_combo <- raster(file.path(dir_2008, "plumes_fert_combo.tif"))
+clipLayer("plumes_fert_combo", saveLocation)
+
+plumes_pest_combo <- raster(file.path(dir_2008, "plumes_pest_combo.tif"))
+clipLayer("plumes_pest_combo", saveLocation)
+
+population_combo <- raster(file.path(dir_2008, "population_combo.tif"))
+clipLayer("population_combo", saveLocation)
+
+sst_combo <- raster(file.path(dir_2008, "sst_combo.tif"))
+clipLayer("sst_combo", saveLocation)
+
+uv_combo <- raster(file.path(dir_2008, "uv_combo.tif"))
+clipLayer("uv_combo", saveLocation)
 
 ##----------------------------------------------------------------------------------------------------
 ## 2013 minus 2008 data ----
@@ -224,7 +337,40 @@ global_cumulative_impact_dif <- raster("cumulative/global_cumul_impact_2013_minu
 clipLayer("global_cumulative_impact_dif", saveLocation)
 
 
+##----------------------------------------------------------------------------------------------------
+## 2013 data minus zeros----
+##--------------------------------------------------------------------------------------------------
 
+tifs = list.files(file.path(rasters, 
+                            'global_impact_model_2013/normalized_by_one_time_period/averaged_by_num_ecosystems/by_threat'), pattern=glob2rx('*.tif'))
+
+## Get rid of zeroes
+
+for(i in 1:length(tifs)){
+rast <- raster(file.path(rasters, 
+                         'global_impact_model_2013/normalized_by_one_time_period/averaged_by_num_ecosystems/by_threat/', tifs[i]))
+reclassify(rast, cbind(0, NA), progress="text", 
+           filename = file.path(path, sprintf("ModifiedPressureMaps/Zero_cut/Pressures2013_oneyear/%s", tifs[i])),
+           overwrite=TRUE)
+}
+
+
+##----------------------------------------------------------------------------------------------------
+## 2013 minus 2008 data minus zeros----
+##--------------------------------------------------------------------------------------------------
+
+tifs = list.files(file.path(rasters, 
+                            'global_impact_difference_2008_2013/normalized_by_two_time_periods/averaged_by_num_ecosystems/by_threat'), pattern=glob2rx('*.tif'))
+
+## Get rid of zeroes
+
+for(i in 1:length(tifs)){
+  rast <- raster(file.path(rasters, 
+                           'global_impact_difference_2008_2013/normalized_by_two_time_periods/averaged_by_num_ecosystems/by_threat', tifs[i]))
+  reclassify(rast, cbind(0, NA), progress="text", 
+             filename = file.path(path, sprintf("ModifiedPressureMaps/Zero_cut/Difference2013minus2008/%s", tifs[i])),
+             overwrite=TRUE)
+}
 
 
 
