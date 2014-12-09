@@ -124,7 +124,7 @@ fao <- readOGR(dsn="/var/data/ohi/git-annex/Global/NCEAS-Pressures-Summaries_fra
 fao@data <- join(fao@data, fao_data, by=c("rgn_id", "rgn_nam"))
 
 col.brks=0:5
-colors <- c('#00CED170', '#92D05070', '#FFFF0070', '#FFC00070', '#FF000070')
+colors <- c('#1E90FF70', '#92D05070', '#FFFF0070', '#FFC00070', '#FF000070')
 #1E90FF70 #cadetblue
 #104E8B70
 # function 
@@ -152,7 +152,7 @@ plotCHI_fao <- function(fig=file.path(path_save, "CHI_FAO_wgs.png"), shapeFile=f
         y = c(y1, y2),
         z = matrix(1:5), col=colors, add=T)
   rect(x1-ixd,y1,x2+ixd,y2, border='gray20')
-  text(x = c(seq(x1-ixd, x2+ixd, length.out=5)),
+  text(x = ix,
        y = y1, cex=1, pos=1, # adj=c(0.5,0), # , offset=0.1,
        labels=c(1:5)) 
   par(xpd=F) # turn back on clipping to plot region
@@ -160,5 +160,7 @@ plotCHI_fao <- function(fig=file.path(path_save, "CHI_FAO_wgs.png"), shapeFile=f
 }
 
 plotCHI_fao()
+#testing
+
  
 
