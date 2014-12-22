@@ -189,6 +189,16 @@ clipLayer("sst_combo", saveLocation)
 uv_combo <- raster(file.path(dir_2013_2, "by_threat/uv_combo.tif"))
 clipLayer("uv_combo", saveLocation)
 
+# cumulative impacts:
+dir_2013_2 <- file.path(dir_halpern2008, 
+                        '/mnt/storage/marine_threats/impact_layers_2013_redo',
+                        'global_impact_model_2013/normalized_by_two_time_periods/averaged_by_num_ecosystems')
+
+saveLocation <- "/var/data/ohi/git-annex/Global/NCEAS-Pressures-Summaries_frazier2013/TrimmedPressureLayers/Pressures2013_two_years/"
+
+cumulative_impacts <- raster(file.path(dir_2013_2, 
+                                            "all_layers_except_shipping_oceanpollution_invasives_slr/cumulative/global_cumul_impact_2013_all_layers_except_shipping_oceanpollution_invasives_slr.tif"))
+clipLayer("cumulative_impacts", saveLocation)
 
 
 
@@ -205,7 +215,10 @@ setwd(file.path(dir_halpern2008,
 saveLocation <- "/var/data/ohi/git-annex/Global/NCEAS-Pressures-Summaries_frazier2013/TrimmedPressureLayers/Pressures2008/"
 
 # load and check pressures layers
-global_cumulative_impact_2008_all_layers <- raster("all_layers_except_shipping_oceanpollution_invasives/cumulative/global_cumul_impact_2008_all_layers_except_shipping_oceanpollution_invasives.tif")
+global_cumulative_impact_2008_all_layers <- raster(file.path(dir_halpern2008, 
+          '/mnt/storage/marine_threats/impact_layers_2013_redo',
+'global_impact_model_2008/normalized_by_two_time_periods/averaged_by_num_ecosystems/all_layers_except_shipping_oceanpollution_invasives/cumulative/global_cumul_impact_2008_all_layers_except_shipping_oceanpollution_invasives.tif'))
+
 clipLayer("global_cumulative_impact_2008_all_layers", saveLocation)
 
 
@@ -372,6 +385,17 @@ for(i in 1:length(tifs)){
              overwrite=TRUE)
 }
 
+# for cumulative impacts:
+tifs = list.files(file.path(rasters, 
+                            'global_impact_difference_2008_2013/normalized_by_two_time_periods/averaged_by_num_ecosystems/by_threat'), pattern=glob2rx('*.tif'))
+
+## Get rid of zeroes
+
+  rast <- raster(file.path(rasters, 
+                           'global_impact_difference_2008_2013/normalized_by_two_time_periods/averaged_by_num_ecosystems/cumulative/global_cumul_impact_2013_minus_2008.tif'))
+  reclassify(rast, cbind(0, NA), progress="text", 
+             filename = file.path(path, sprintf("ModifiedPressureMaps/Zero_cut/Difference2013minus2008/global_cumul_impact_2013_minus_2008")),
+             overwrite=TRUE)
 
 
 

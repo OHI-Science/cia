@@ -321,10 +321,27 @@ dev.off()
 ## Fig. 2: EEZ change in CHI vs. absolute CHI ----
 
 eez2ohi <- read.csv(file.path(dir_neptune_data, "model/GL-NCEAS-OceanRegions_v2013a/data/rgn_2013master.csv"), stringsAsFactors=FALSE) %>%
-  select(rgn_id_2013, eez_id, eez_nam) 
+  select(rgn_id_2013, eez_id, eez_nam)
 
-eezArea <- read.csv(file.path(dir_neptune_data, "model/GL-NCEAS-OceanRegions_v2013a/data/eez_fao_gcs_area.csv"), stringsAsFactors=FALSE)%>%
-  mutate(eez_id = as.character(eez_id))
+eez2ohi$eez_id[eez2ohi$rgn_id==137] <- 137
+eez2ohi <- rbind(eez2ohi, data.frame(rgn_id_2013=137, eez_id=109, eez_nam="Ecuador|Galapagos Islands"))
+
+eez2ohi$eez_nam[eez2ohi$rgn_id==163] <- "United States"
+eez2ohi <- rbind(eez2ohi, data.frame(rgn_id_2013=163, eez_id=160, eez_nam="United States"))
+eez2ohi <- rbind(eez2ohi, data.frame(rgn_id_2013=163, eez_id=163, eez_nam="United States"))
+
+eez2ohi <- rbind(eez2ohi, data.frame(rgn_id_2013=171, eez_id=87, eez_nam="Brazil|Trindade"))
+
+eez2ohi$eez_id[eez2ohi$rgn_id==224] <- 224
+eez2ohi <- rbind(eez2ohi, data.frame(rgn_id_2013=224, eez_id=225, eez_nam="Chile|Easter Island"))
+
+
+eez2ohi$eez_nam[eez2ohi$rgn_id==32] <- "Reunion"
+eez2ohi$eez_nam[eez2ohi$rgn_id==100] <- "Republique du Congo"
+
+eezArea <- read.csv(file.path(dir_neptune_data, "model/GL-NCEAS-OceanRegions_v2013a/data/eez_area.csv"), stringsAsFactors=FALSE)%>%
+  mutate(eez_id = as.character(eez_id)) %>%
+  select(eez_id, area_km2)
 
 coastal_pop <- read.csv("../ohi-global/eez2013/layers/mar_coastalpopn_inland25mi.csv", stringsAsFactors=FALSE) %>%
   filter(year==2015) %>%
@@ -337,6 +354,9 @@ coastal_pop_trend <- read.csv("../ohi-global/eez2013/layers/mar_coastalpopn_inla
   do(data.frame(
     rgn_id_2013=.$rgn_id,
     pop_trend=coef(.$mdl)[['year']]))
+
+labels <- read.csv(file.path(path_save, "Labels_fig2.csv")) %>%
+  select(rgn_id_2013, label)
 
 # test <- read.csv("../ohi-global/eez2013/layers/mar_coastalpopn_inland25mi.csv", stringsAsFactors=FALSE) %>%
 #   filter(rgn_id==1)
@@ -354,41 +374,46 @@ datadiff <- read.csv("ZonalExtractionData/diff_2013minus2008_eez.csv", stringsAs
   left_join(eez2ohi) %>%
   filter(!(rgn_id_2013 %in% 255),
          !is.na(rgn_id_2013)) %>%
+  left_join(eezArea, by=c("eez_id")) %>%
+  group_by(rgn_id_2013, eez_nam) %>%
+  summarize(global_cumul_impact_2013_all_layers=weighted.mean(global_cumul_impact_2013_all_layers, area_km2),  
+    global_cumul_impact_2013_minus_2008=weighted.mean(global_cumul_impact_2013_minus_2008, area_km2),
+            area_km2=sum(area_km2))
+
+
+datadiff2 <- datadiff %>%
+  left_join(labels) %>%
   left_join(coastal_pop, by=c("rgn_id_2013")) %>%
   mutate(log_population=log(popsum + 1)) %>%
   left_join(coastal_pop_trend, by=c("rgn_id_2013")) %>%
-  left_join(eezArea, by=c("eez_id")) %>%
-  mutate(log_area_km2 = log(area_km2))
+    mutate(log_area_km2 = log(area_km2))
 
-## version 1
-ggplot(datadiff, aes(x=global_cumul_impact_2013_minus_2008, y=global_cumul_impact_2013_all_layers, size=log_population)) +
-  geom_point(shape=19, fill="gray", alpha=.6, color="gray") +
-  labs(x=expression(gamma ~ "CHI"), y='2013 CHI', size="ln population") +
+
+
+datadiff2$label <- ifelse(datadiff2$label==1, as.character(datadiff2$eez_nam), NA)
+
+#my_cols <- diverge_hcl(3, c=100, l=c(50, 90), power=1)
+ggplot(datadiff2, aes(x=global_cumul_impact_2013_minus_2008, y=global_cumul_impact_2013_all_layers, size=area_km2)) +
+  geom_point(aes(fill=pop_trend), shape=21, alpha=.8, color="black", alpha=0.8) +
   geom_hline(yintercept=median(datadiff$global_cumul_impact_2013_all_layers), color="red", linetype=2) +
   geom_vline(xintercept=0, color="red", linetype=2) +
-  scale_size(range=c(2,8)) +
-  myTheme + 
-  theme(legend.justification=c(1,1), legend.position=c(1,1),
-        legend.background = element_rect(colour = "gray"),
-        legend.key = element_rect(colour = NA))
-
-#ggsave(file.path(path_save, 'CHI2013vsCHIGamma.pdf'))
-
-## version 2
-my_cols <- diverge_hcl(3, c=100, l=c(50, 90), power=1)
-ggplot(datadiff, aes(x=global_cumul_impact_2013_minus_2008, y=global_cumul_impact_2013_all_layers, size=area_km2)) +
-  geom_point(aes(color=pop_trend), shape=19, alpha=.8) +
-  labs(x=expression(gamma ~ "CHI"), y='2013 CHI', size=expression("eez area, km"^2), color="ln pop tren") +
-  geom_hline(yintercept=median(datadiff$global_cumul_impact_2013_all_layers), color="red", linetype=2) +
-  geom_vline(xintercept=0, color="red", linetype=2) +
+  #geom_text(aes(label=eez_nam)) + 
+  geom_text(aes(label=label), size=4, hjust=1) +
+  labs(x="Change in cumulative impact", y='Cumulative impact in 2013', size=expression("ocean area, km"^2), fill=expression("ln pop trend")) +
   scale_size(range=c(3,15)) +
-  scale_color_gradient(low="yellow", high="brown") +
+  scale_fill_gradientn(colours=rev(brewer.pal(11, "Spectral")), values=seq(-0.05, 0.05, length=11),  
+                       rescaler = function(x, ...) x, oob = identity, na.value="white") +
+ #scale_color_gradient(low="yellow", high="red3") +
   myTheme + 
   theme(legend.justification=c(1,1),
         legend.background = element_rect(colour = "gray"),
-        legend.key = element_rect(colour = NA))
+        legend.key = element_rect(colour = NA),
+        axis.title.y = element_text(vjust=1),
+        legend.position=c(1,1))
 
-ggsave(file.path(path_save, 'CHI2013vsCHIGamma_area.pdf'))
+ggsave(file.path(path_save, 'CHI2013vsCHIGamma_area_labels_v3.pdf'), )
+
+
 
 ## Figure 3 ----
 # Part a: Global 2013 scores
@@ -592,6 +617,10 @@ clipLayer("rasterOutliers", file.path(path, 'ModifiedPressureMaps/old2008_greate
 ## SOM Fig. 3a: Scatter plot of average per-pixel ci scores for each eez----
   # note: need to label outliers 
 
+label_eez <- read.csv(file.path(path_save, "eez2013vs2008_labels.csv")) %>%
+  mutate(label = ifelse(label==1, as.character(eez_nam), NA)) %>%
+  select(eez_id, label)
+
 eez_2008 <- read.csv("ZonalExtractionData/twoYearNorm_2008_eez.csv") %>%
   select(eez_id, eez_key, eez_nam, sov_id, sov_nam, eez_iso3, 
          ci_2008=global_cumul_impact_2008_all_layers_except_shipping_oceanpollution_invasives)
@@ -599,17 +628,24 @@ eez_2008 <- read.csv("ZonalExtractionData/twoYearNorm_2008_eez.csv") %>%
 eez_2013 <- read.csv("ZonalExtractionData/twoYearNorm_2013_eez.csv") %>%
   select(eez_id, eez_key, eez_nam, sov_id, sov_nam, eez_iso3, 
          ci_2013=global_cumul_impact_2013_all_layers_except_shipping_oceanpollution_invasives_slr) %>%
-  left_join(eez_2008)
+  left_join(eez_2008) %>%
+  left_join(label_eez) %>%
+  filter(eez_nam != "Conflict Zone")
 
-p <- ggplot(eez_2013, aes(y=ci_2013, x=ci_2008)) +
-  geom_point(shape=19) +
-  geom_text(aes(label=eez_nam), size=1, hjust=1.1) +
+
+
+ggplot(eez_2013, aes(y=ci_2013, x=ci_2008)) +
+  geom_point(shape=19, color="gray") +
+  #geom_text(aes(label=eez_nam), size=1, hjust=1.1) +  ### all labels
   geom_rug(alpha=0.2) +
+  geom_text(aes(label=label), size=3.5, hjust=1.1) +
   geom_abline(slope=1, intercept=0, linetype=2, color="orange") +
   myTheme +
-  labs(x="2008 Cumulative Impact Scores", y="2013 Cumulative Impact Scores")
-print(p) 
-ggsave(file.path(path_save, 'EEZ_2008vs2013_labels.pdf'))
+  labs(x="2008 Cumulative Impact Scores", y="2013 Cumulative Impact Scores") +
+  scale_x_continuous(limits = c(-0.30, 5)) + 
+  scale_y_continuous(limits = c(-0.30, 5)) + 
+  theme(axis.title.y = element_text(vjust=1)) 
+ggsave(file.path(path_save, 'EEZ_2008vs2013_labels.pdf'), units="in", height=10, width=10)
 
 
 ## SOM Fig. 3b: Scatter plot of average per-pixel ci scores for each meow----
@@ -623,15 +659,23 @@ meow_2013 <- read.csv("ZonalExtractionData/twoYearNorm_2013_meow.csv") %>%
          ci_2013=global_cumul_impact_2013_all_layers_except_shipping_oceanpollution_invasives_slr) %>%
   left_join(meow_2008)
 
-p <- ggplot(meow_2013, aes(y=ci_2013, x=ci_2008)) +
-  geom_point(shape=19) +
-  geom_text(aes(label=ECOREGION), size=1, hjust=1.1) +
+#saved as following:
+meow_2013 <- read.csv(file.path(path_save, "meow_2008vs2013_labels.csv")) %>%
+  mutate(label = ifelse(label==1, as.character(ECOREGION), NA)) 
+
+ggplot(meow_2013, aes(y=ci_2013, x=ci_2008)) +
+  geom_point(shape=19, color="gray") +
+  geom_text(aes(label=label), size=3.5, hjust=1) +
+#  geom_text(aes(label=ECOREGION), size=1, hjust=1.1) + # all labels
   geom_rug(alpha=0.2) +
   geom_abline(slope=1, intercept=0, linetype=2, color="orange") +
   myTheme +
-  labs(x="2008 Cumulative Impact Scores", y="2013 Cumulative Impact Scores")
-print(p) 
-ggsave(file.path(path_save, 'meow_2008vs2013_labels.pdf'))
+  theme(axis.title.y = element_text(vjust=1)) + 
+  labs(x="2008 Cumulative Impact Scores", y="2013 Cumulative Impact Scores") +
+  scale_x_continuous(limits = c(-0.75, 4.5)) + 
+  scale_y_continuous(limits = c(-0.75, 4.5))  
+
+ggsave(file.path(path_save, 'meow_2008vs2013_labels.pdf'), units="in", height=10, width=10)
 
 
 ## SOM Fig. 4: stacked horizontal bar graphs for each eez showing contribution of each stressor type to CI score----
@@ -999,6 +1043,7 @@ region_plots(cn, "cn")
 tifs = list.files(file.path(path_trim, 'Pressures2013'), pattern=glob2rx('*.gri'))
 tifs <- gsub(".gri", '', tifs)
 
+
 stack_2013_one <- stack()
 for(i in 1:length(tifs)){
   tmp <- raster(file.path(file.path(path_trim, 'Pressures2013'), tifs[i]))
@@ -1060,7 +1105,7 @@ dev.off()
 
 
 ####################################
-## S10: Change in stressor impact----
+## S10: Change in stressor impact ----
 ####################################
 
 dem_fishing_zerocut <- raster(file.path(path, "ModifiedPressureMaps/Zero_cut/Difference2013minus2008/demersal_destructive_fishing_combo_2013_minus_2008.tif"))
@@ -1112,26 +1157,56 @@ difPlots(uv_zeroCut, my_breaks=my_breaks,
          title="UV")
 
 
-#b:  nutrient_diff
+
+### function for the more regional maps:
+Diff_plots  <-function(raster_data, my_breaks, title){
+  difPlots(raster_data, my_breaks, 
+           file_name=sprintf("Pressures2013minus2008/%s.png", names(raster_data)),
+           title=title)
+  
+  fl <- crop(raster_data, fl_extent)
+  difPlots(fl, my_breaks, file_name=sprintf("Pressures2013minus2008/FL/FigS10_%s.png", names(raster_data)), legend=FALSE)
+  
+  med <- crop(raster_data, med_extent)
+  difPlots(med, my_breaks, file_name=sprintf("Pressures2013minus2008/MED/FigS10_%s.png", names(raster_data)), legend=FALSE)
+  
+  uk <- crop(raster_data, uk_extent)
+  difPlots(uk, my_breaks, file_name=sprintf("Pressures2013minus2008/UK/FigS10_%s.png", names(raster_data)), legend=FALSE)
+  
+  cn <- crop(raster_data, cn_extent)
+  difPlots(cn, my_breaks, file_name=sprintf("Pressures2013minus2008/CN/FigS10_%s.png", names(raster_data)), legend=FALSE)
+}
+
+## night lights
+nightLights <- raster(file.path(path, "ModifiedPressureMaps/Zero_cut/Difference2013minus2008/night_lights_combo_2013_minus_2008.tif"))
+histogram(nightLights)
+my_breaks <- c(-0.81, -0.2, -0.15, -0.10, -0.05, 0, 0.5, 0.1, 0.15, 0.2, 0.92)
+Diff_plots(nightLights, my_breaks, "Light pollution")
+
+
+## nutrient_diff
 nutrient_zeroCut <- raster(file.path(path, "ModifiedPressureMaps/Zero_cut/Difference2013minus2008/plumes_fert_combo_2013_minus_2008.tif"))
 my_breaks <- c(-0.69 , -0.10, -0.08, -0.06, -0.04, -0.02, 0,
                0.02, 0.04, 0.06, 0.08, 0.1, 0.69)
-difPlots(nutrient_zeroCut, my_breaks=my_breaks, file_name="Fig4b.nutrients_global.png", extent=TRUE)
+Diff_plots(nutrient_zeroCut, my_breaks, "Nutrient pollution")
 
+## organic differences
+organic_zeroCut <- raster(file.path(path, "ModifiedPressureMaps/Zero_cut/Difference2013minus2008/plumes_pest_combo_2013_minus_2008.tif"))
+histogram(organic_zeroCut)
+my_breaks <- c( -0.27, -0.1, -0.0.75, -0.05, -0.025, 0, 0.025, 0.05, 0.075, 0.1, 0.34)
+Diff_plots(organic_zeroCut, my_breaks, "Organic pollution")
 
-fl <- crop(nutrient_zeroCut, fl_extent)
-difPlots(fl, my_breaks=my_breaks, file_name="Fig4b.nutrients_fl_diff.png", legend=FALSE)
+## oil rigs
+oil_rigs <- raster(file.path(path, "ModifiedPressureMaps/Zero_cut/Difference2013minus2008/oil_rigs_combo_2013_minus_2008.tif"))
+histogram(oil_rigs)
+my_breaks <- c(-2, -1.5, -1.0, -0.5, 0, 0.5, 1.0, 1.5, 2)
+Diff_plots(oil_rigs, my_breaks, "Oil rigs")
 
-med <- crop(nutrient_zeroCut, med_extent)
-difPlots(med, my_breaks=my_breaks, file_name="Fig4b.nutrients_med_diff.png", legend=FALSE)
-
-uk <- crop(nutrient_zeroCut, uk_extent)
-difPlots(uk, my_breaks=my_breaks, file_name="Fig4b.nutrients_uk_diff.png", legend=FALSE)
-
-cn <- crop(nutrient_zeroCut, cn_extent)
-difPlots(cn, my_breaks=my_breaks, file_name="Fig4b.nutrients_cn_diff.png", legend=FALSE)
-
-
+## population
+population <- raster(file.path(path, "ModifiedPressureMaps/Zero_cut/Difference2013minus2008/population_combo_2013_minus_2008.tif"))
+histogram(population)
+my_breaks <- c( -1.7, -0.2, -0.15, -0.10, -0.05, 0, 0.5, 0.1, 0.15, 0.2, 1.4)
+Diff_plots(population, my_breaks, "Direct human impact")
 
 
 ################################################################################
@@ -1140,69 +1215,433 @@ difPlots(cn, my_breaks=my_breaks, file_name="Fig4b.nutrients_cn_diff.png", legen
 
 #first convert to zero/one
 
-raster_list <- c(
-  "sst_combo",
-                            ))
-file_list <- data.frame(locs=c("Pressures2008", "Pressures2013_two_years"))
-stressor_num <- 3
+for(i in 1:length(difference_data$layer)){
+raster_2008 <- raster(file.path(path_trim, "Pressures2008", sprintf("%s_combo", difference_data$layer[i])))
+reclassify(raster_2008, c(-Inf, 0, 0,   #should be no negative values
+                          0, Inf, 1), 
+           filename=file.path(path, 
+                              sprintf('ModifiedPressureMaps/ZeroOneClassification/2008_two_year/%s', difference_data$layer[i])),
+           progress="text", overwrite=TRUE)
 
-raster_2008 <- raster(file.path(path_trim, file_list$locs[1], raster_list$stressor[stressor_num]))
-raster_2013 <- raster(file.path(path_trim, file_list$locs[2], raster_list$stressor[stressor_num]))
 
+raster_2013 <- raster(file.path(path_trim, "Pressures2013_two_years", sprintf("%s_combo", difference_data$layer[i])))
 reclassify(raster_2013, c(-Inf, 0, 0,
                           0, Inf, 1), 
            filename=file.path(path, 
-                              sprintf('ModifiedPressureMaps/ZeroOneClassification/2013_two_year/%s', raster_list$stressor[stressor_num])),
+                              sprintf('ModifiedPressureMaps/ZeroOneClassification/2013_two_year/%s', difference_data$layer[i])),
            progress="text", overwrite=TRUE)
+}
 
-reclassify(raster_2008, c(-Inf, 0, 0,
-                          0, Inf, 1), 
-           filename=file.path(path, 
-                              sprintf('ModifiedPressureMaps/ZeroOneClassification/2008_two_year/%s', raster_list$stressor[stressor_num])),
-           progress="text", overwrite=TRUE)
 
+#multiply the layers together to form a new raster layer:
+for(i in 1:length(difference_data$layer)){
 dem_2008 <- raster(file.path(path, 
-                             sprintf('ModifiedPressureMaps/ZeroOneClassification/2008_two_year/%s', raster_list$stressor[stressor_num])))
-freq(dem_2008, value=1, useNA="no", progress="text")
-freq(dem_2008, value=0, useNA="no", progress="text")
-
+                             sprintf('ModifiedPressureMaps/ZeroOneClassification/2008_two_year/%s', difference_data$layer[i])))
 dem_2013 <- raster(file.path(path, 
-                             sprintf('ModifiedPressureMaps/ZeroOneClassification/2013_two_year/%s', raster_list$stressor[stressor_num])))
-freq(dem_2013, value=1, useNA="no", progress="text")
-freq(dem_2013, value=0, useNA="no", progress="text")
+                             sprintf('ModifiedPressureMaps/ZeroOneClassification/2013_two_year/%s', difference_data$layer[i])))
 
 s <- stack(dem_2008, dem_2013)
 overlay(s, fun=function(x,y) x*y, 
         filename=file.path(path, 
-                           sprintf('ModifiedPressureMaps/ZeroOneClassification/two_year_2013times2008/', raster_list$stressor[stressor_num])), 
-        progress="text")
+                           sprintf('ModifiedPressureMaps/ZeroOneClassification/two_year_2013times2008/%s', difference_data$layer[i])), 
+        progress="text",
+        overwrite=TRUE)
+}
+
+countData <- data.frame()
+
+for(i in 1:length(difference_data$layer)){
+  #i=12
+dem_2008 <- raster(file.path(path, 
+                             sprintf('ModifiedPressureMaps/ZeroOneClassification/2008_two_year/%s', difference_data$layer[i])))
+Count_2008_one <- data.frame(year=2008, 
+                       pressure=difference_data$layer[i],
+                       ZeroOned="one",
+                       Count=freq(dem_2008, value=1, useNA="no", progress="text"))
+Count_2008_zero <- data.frame(year=2008, 
+                           pressure=difference_data$layer[i],
+                           ZeroOned="zero",
+                           Count=freq(dem_2008, value=0, useNA="no", progress="text"))
+
+dem_2013 <- raster(file.path(path, 
+                             sprintf('ModifiedPressureMaps/ZeroOneClassification/2013_two_year/%s', difference_data$layer[i])))
+Count_2013_one <- data.frame(year=2013, 
+                             pressure=difference_data$layer[i],
+                             ZeroOned="one",
+                             Count=freq(dem_2013, value=1, useNA="no", progress="text"))
+Count_2013_zero <- data.frame(year=2013, 
+                              pressure=difference_data$layer[i],
+                              ZeroOned="zero",
+                              Count=freq(dem_2013, value=0, useNA="no", progress="text"))
 
 diff <- raster(file.path(path, 
-                           sprintf('ModifiedPressureMaps/ZeroOneClassification/two_year_2013times2008/%s', raster_list$stressor[stressor_num])))
-freq(diff, value=1, useNA="no", progress="text")
-freq(diff, value=0, useNA="no", progress="text")
+                           sprintf('ModifiedPressureMaps/ZeroOneClassification/two_year_2013times2008/%s', difference_data$layer[i])))
+Count_diff_one <- data.frame(year="dif", 
+                             pressure=difference_data$layer[i],
+                             ZeroOned="one",
+                             Count=freq(diff, value=1, useNA="no", progress="text"))
+Count_diff_zero <- data.frame(year="dif", 
+                              pressure=difference_data$layer[i],
+                              ZeroOned="zero",
+                              Count=freq(diff, value=0, useNA="no", progress="text"))
 
+newData <- rbind(Count_2008_one, Count_2008_zero, Count_2013_one, Count_2013_zero, Count_diff_one, Count_diff_zero)
 
-tifs = list.files(file.path(path_trim, 'Pressures2013'), pattern=glob2rx('*.gri'))
-tifs <- gsub(".gri", '', tifs)
-
-stack_2013_one <- stack()
-for(i in 1:length(tifs)){
-  tmp <- raster(file.path(file.path(path_trim, 'Pressures2013'), tifs[i]))
-  names(tmp) <- tifs[i]
-  stack_2013_one <- stack(stack_2013_one, tmp )
+countData <- rbind(countData, newData)
 }
 
-plot(raster(stack_2013_one, 2))
+#write.csv(countData, file.path(path_save, "countData_Change0to1etc.csv"), row.names=FALSE)
+countData_test <- read.csv(file.path(path_save, "countData_Change0to1etc.csv"))
 
-for(i in 1:length(tifs)){
-  #i <- 1
-  reclassify(raster(stack_2013_one, i), c(-Inf, 0, 0,
-                                          0, Inf, 1), 
+countData2 <- countData_test %>%
+  mutate(spreadVar=paste(year, ZeroOned, sep="_"))%>%
+  select(pressure, spreadVar, Count) %>%
+  spread(spreadVar, Count)
+
+countData2$became0_count <- countData2$"dif_zero" - countData2$"2008_zero"
+countData2$became1_count <- countData2$"dif_zero" - countData2$"2013_zero"
+countData2$stayed1_count <- countData2$"dif_one"
+countData2$stayed0_count <- countData2$"dif_zero" - countData2$became0_count - countData2$became1_count
+
+countData2$became0_per <- (countData2$"dif_zero" - countData2$"2008_zero")/(countData2$"2008_one" + countData2$"2008_zero") * 100
+countData2$became1_per <- (countData2$"dif_zero" - countData2$"2013_zero")/(countData2$"2008_one" + countData2$"2008_zero") * 100
+countData2$stayed0_per <- countData2$stayed0_count/(countData2$"2008_one" + countData2$"2008_zero") * 100
+countData2$stayed1_per <- countData2$dif_one/(countData2$"2008_one" + countData2$"2008_zero") * 100
+write.csv(countData2, file.path(path_save, "countDataSummary_Change0to1etc.csv"), row.names=FALSE)
+
+268171008/(268171008+69712874+60338881+17936214)  #stayed 1: 64.4%
+60338881/(268171008+69712874+60338881+17936214) #stayed 0: 14.5%
+69712874/(268171008+69712874+60338881+17936214) #increased from 0: 16.8%
+17936214/(268171008+69712874+60338881+17936214) #decreased to 0: 4.3%
+
+
+
+
+#### do this for cumulative impacts
+
+raster_2008 <- raster(file.path(path_trim, "Pressures2008/global_cumulative_impact_2008_all_layers"))
+  reclassify(raster_2008, c(-Inf, 0, 0,   #should be no negative values
+                            0, Inf, 1), 
              filename=file.path(path, 
-                                sprintf('ModifiedPressureMaps/ZeroOneClassification/%s_ZeroClassify', tifs[i])),
-             progress="text")
+                                'ModifiedPressureMaps/ZeroOneClassification/2008_two_year/global_cumulative_impact_2008_all_layers'),
+             progress="text", overwrite=TRUE)
+  
+  
+  raster_2013 <- raster(file.path(path_trim, "Pressures2013_two_years/cumulative_impacts"))
+  reclassify(raster_2013, c(-Inf, 0, 0,
+                            0, Inf, 1), 
+             filename=file.path(path, 
+                                'ModifiedPressureMaps/ZeroOneClassification/2013_two_year/cumulative_impacts'),
+             progress="text", overwrite=TRUE)
+
+
+
+#multiply the layers together to form a new raster layer:
+  dem_2008 <- raster(file.path(path, 
+                               'ModifiedPressureMaps/ZeroOneClassification/2008_two_year/global_cumulative_impact_2008_all_layers'))
+  dem_2013 <- raster(file.path(path, 
+                               'ModifiedPressureMaps/ZeroOneClassification/2013_two_year/cumulative_impacts'))
+  
+  s <- stack(dem_2008, dem_2013)
+  overlay(s, fun=function(x,y) x*y, 
+          filename=file.path(path, 
+                             'ModifiedPressureMaps/ZeroOneClassification/two_year_2013times2008/cumulative_impacts'), 
+          progress="text",
+          overwrite=TRUE)
+
+## collect data and save:
+countData <- data.frame()
+
+  dem_2008 <- raster(file.path(path, 
+                  'ModifiedPressureMaps/ZeroOneClassification/2008_two_year/global_cumulative_impact_2008_all_layers'))
+  Count_2008_one <- data.frame(year=2008, 
+                               pressure="cumulative_impact",
+                               ZeroOned="one",
+                               Count=freq(dem_2008, value=1, useNA="no", progress="text"))
+  Count_2008_zero <- data.frame(year=2008, 
+                                pressure="cumulative_impact",
+                                ZeroOned="zero",
+                                Count=freq(dem_2008, value=0, useNA="no", progress="text"))
+  
+  dem_2013 <- raster(file.path(path, 
+                               'ModifiedPressureMaps/ZeroOneClassification/2013_two_year/cumulative_impacts'))
+  Count_2013_one <- data.frame(year=2013, 
+                               pressure='cumulative_impact',
+                               ZeroOned="one",
+                               Count=freq(dem_2013, value=1, useNA="no", progress="text"))
+  Count_2013_zero <- data.frame(year=2013, 
+                                pressure='cumulative_impact',
+                                ZeroOned="zero",
+                                Count=freq(dem_2013, value=0, useNA="no", progress="text"))
+  
+  diff <- raster(file.path(path, 
+                  'ModifiedPressureMaps/ZeroOneClassification/two_year_2013times2008/cumulative_impacts'))
+  Count_diff_one <- data.frame(year="dif", 
+                               pressure='cumulative_impact',
+                               ZeroOned="one",
+                               Count=freq(diff, value=1, useNA="no", progress="text"))
+  Count_diff_zero <- data.frame(year="dif", 
+                                pressure='cumulative_impact',
+                                ZeroOned="zero",
+                                Count=freq(diff, value=0, useNA="no", progress="text"))
+  
+  newData <- rbind(Count_2008_one, Count_2008_zero, Count_2013_one, Count_2013_zero, Count_diff_one, Count_diff_zero)
+  
+  
+#write.csv(countData, file.path(path_save, "countData_Change0to1etc.csv"), row.names=FALSE)
+countData_test <- read.csv(file.path(path_save, "cumulativeImpactData_changeZero.csv"))
+
+countData2 <- countData_test %>%
+  mutate(spreadVar=paste(year, ZeroOned, sep="_"))%>%
+  select(pressure, spreadVar, Count) %>%
+  spread(spreadVar, Count)
+
+countData2$became0_count <- countData2$"dif_zero" - countData2$"2008_zero"
+countData2$became1_count <- countData2$"dif_zero" - countData2$"2013_zero"
+countData2$stayed1_count <- countData2$"dif_one"
+countData2$stayed0_count <- countData2$"dif_zero" - countData2$became0_count - countData2$became1_count
+
+countData2$became0_per <- (countData2$"dif_zero" - countData2$"2008_zero")/(countData2$"2008_one" + countData2$"2008_zero") * 100
+countData2$became1_per <- (countData2$"dif_zero" - countData2$"2013_zero")/(countData2$"2008_one" + countData2$"2008_zero") * 100
+countData2$stayed0_per <- countData2$stayed0_count/(countData2$"2008_one" + countData2$"2008_zero") * 100
+countData2$stayed1_per <- countData2$dif_one/(countData2$"2008_one" + countData2$"2008_zero") * 100
+write.csv(countData2, file.path(path_save, "countDataSummary_Change0to1etc_CumulativeImpacts.csv"), row.names=FALSE)
+
+268171008/(268171008+69712874+60338881+17936214)  #stayed 1: 64.4%
+60338881/(268171008+69712874+60338881+17936214) #stayed 0: 14.5%
+69712874/(268171008+69712874+60338881+17936214) #increased from 0: 16.8%
+17936214/(268171008+69712874+60338881+17936214) #decreased to 0: 4.3%
+
+
+
+################################################################################
+# Table S??: Difference in positive negative ----
+################################################################################
+
+difference_data$layer 
+
+for(i in 1:length(difference_data$layer)){
+#  i <- 11
+  data_layer <- raster(file.path(path, 
+          sprintf("ModifiedPressureMaps/Zero_cut/Difference2013minus2008/%s_combo_2013_minus_2008.tif", difference_data$layer[i])))
+  reclassify(data_layer, c(-Inf, 0, 0,
+                            0, Inf, 1), 
+             filename=file.path(path, 
+                                sprintf('ModifiedPressureMaps/PosNegClasses_diffData/%s', difference_data$layer[i])),
+             progress="text", overwrite=TRUE)
 }
+
+### mask these data:
+
+clip_raster <- raster("/var/data/ohi/git-annex/Global/NCEAS-Pressures-Summaries_frazier2013/clip_raster")
+#plot(clip_raster)
+## Function to clip:
+clipLayer <- function(layer, file){
+  #layer="artisanal_fishing_combo"
+  #file=saveLocation
+  s <- stack(get(layer), clip_raster)
+  overlay(s, fun=function(x,y) x*y, 
+          filename=file,
+          progress="text", overwrite=TRUE)
+}
+
+
+for(i in 1:length(difference_data$layer)){
+  #i=1
+raster_data <- raster(file.path(path, 
+                          sprintf('ModifiedPressureMaps/PosNegClasses_diffData/%s', difference_data$layer[i])))
+
+clipLayer("raster_data", file.path(path, 
+                                   sprintf('ModifiedPressureMaps/PosNegClasses_diffData/%s_clipped', 
+                                           difference_data$layer[i])))
+}
+
+
+### gets counts of increase/decrease
+countData <- data.frame()
+for(i in 1:length(difference_data$layer)){
+#  i <- 1
+  diff <- raster(file.path(path, 
+                           sprintf('ModifiedPressureMaps/PosNegClasses_diffData/%s_clipped', difference_data$layer[i])))
+                 
+  Count_increase <- data.frame(pressure=difference_data$layer[i],
+                               change="increase",
+                               Count=freq(diff, value=1, useNA="no", progress="text"))
+  Count_decrease <- data.frame( pressure=difference_data$layer[i],
+                                change="decrease",
+                                Count=freq(diff, value=0, useNA="no", progress="text"))
+  
+  newData <- rbind(Count_increase, Count_decrease)
+  
+  countData <- rbind(countData, newData)
+}
+
+write.csv(countData, file.path(path_save, "countData_increaseVSdecrease.csv"), row.names=FALSE)
+
+# adding in no change counts:
+
+## Make zeros equal 100 (first step)
+for(i in 1:length(difference_data$layer)){
+  rast <- raster(file.path(path_trim, sprintf("Pressures2013minus2008/%s_combo_dif", difference_data$layer[i])))
+  
+  reclassify(rast, cbind(0, 100), progress="text", 
+             filename = file.path(path, sprintf("ModifiedPressureMaps/ZeroOneClassification/Diff2013minus2008/tmp/%s_intermediate", difference_data$layer[i])),
+             overwrite=TRUE)
+}
+
+
+## Make zeros = 0 others =1
+
+for(i in 1:length(difference_data$layer)){
+    
+    data_layer <- raster(file.path(path, 
+       sprintf("ModifiedPressureMaps/ZeroOneClassification/Diff2013minus2008/tmp/%s_intermediate", difference_data$layer[i])))
+  
+  reclassify(data_layer, c(-Inf, 99, 1,
+                           99, Inf, 0), 
+             filename=file.path(path, 
+                                sprintf('ModifiedPressureMaps/ZeroOneClassification/Diff2013minus2008/%s', 
+                                        difference_data$layer[i])),
+             progress="text", overwrite=TRUE)  
+}
+  
+### count occurrences
+noChangeData <- data.frame()
+for(i in 1:length(difference_data$layer)){
+diff <- raster(file.path(path, sprintf('ModifiedPressureMaps/ZeroOneClassification/Diff2013minus2008/%s', 
+                                       difference_data$layer[i])))
+  
+  Count_nonZero <- data.frame(pressure=difference_data$layer[i],
+                               change="non-zero",
+                               Count=freq(diff, value=1, useNA="no", progress="text"))
+  Count_Zero <- data.frame( pressure=difference_data$layer[i],
+                                change="zero",
+                                Count=freq(diff, value=0, useNA="no", progress="text"))
+  
+  newData <- rbind(Count_nonZero, Count_Zero)
+  
+  noChangeData <- rbind(noChangeData, newData)
+}
+
+countData <- read.csv(file.path(path_save, "countData_increaseVSdecrease.csv"))
+noChangeData <- read.csv(file.path(path_save, "countData_changeVSnochange.csv"))
+
+newData <- rbind(countData, noChangeData)
+newData$change <- as.character(newData$change)
+newData$change[newData$change=="non-zero"] <- "non_zero"
+
+newData <- newData %>%
+   spread(change, Count) %>%
+  select(pressure, decrease_cellCount=decrease, increase_cellCount=increase, noChange_cellCount=zero) %>%
+  mutate(decrease_percent = decrease_cellCount/(decrease_cellCount+increase_cellCount+noChange_cellCount)*100) %>%
+  mutate(increase_percent = increase_cellCount/(decrease_cellCount+increase_cellCount+noChange_cellCount)*100) %>%
+  mutate(noChange_percent = noChange_cellCount/(decrease_cellCount+increase_cellCount+noChange_cellCount)*100)
+
+write.csv(newData, file.path(path_save, "increaseVSdecrease.csv"), row.names=FALSE)
+
+
+########################################################
+#### Do this for cumulative impacts ----
+
+  data_layer <- raster(file.path(path, "ModifiedPressureMaps/Zero_cut/Difference2013minus2008/global_cumul_impact_2013_minus_2008"))
+  reclassify(data_layer, c(-Inf, 0, 0,
+                           0, Inf, 1), 
+             filename=file.path(path, 
+                                'ModifiedPressureMaps/PosNegClasses_diffData/global_cumul_impact_2013_minus_2008'),
+             progress="text", overwrite=TRUE)
+
+### mask these data:
+  raster_data <- raster(file.path(path, 
+                                  'ModifiedPressureMaps/PosNegClasses_diffData/global_cumul_impact_2013_minus_2008'))
+  
+  clipLayer("raster_data", file.path(path, 
+                                     'ModifiedPressureMaps/PosNegClasses_diffData/global_cumul_impact_2013_minus_2008_clipped'))
+
+
+### gets counts of increase/decrease
+  diff <- raster(file.path(path, 
+                           'ModifiedPressureMaps/PosNegClasses_diffData/global_cumul_impact_2013_minus_2008_clipped'))
+  
+  Count_increase <- data.frame(pressure="cumulative impact",
+                               change="increase",
+                               Count=freq(diff, value=1, useNA="no", progress="text"))
+  Count_decrease <- data.frame( pressure="cumulative impact",
+                                change="decrease",
+                                Count=freq(diff, value=0, useNA="no", progress="text"))
+  
+  newData <- rbind(Count_increase, Count_decrease)
+  
+
+write.csv(newData, file.path(path_save, "countData_increaseVSdecrease_cumulative.csv"), row.names=FALSE)
+
+# adding in no change counts:
+
+## Make zeros equal 100 (first step)
+  rast <- raster(file.path(path_trim, "Pressures2013minus2008/global_cumulative_impact_dif"))
+  
+  reclassify(rast, cbind(0, 100), progress="text", 
+             filename = file.path(path, "ModifiedPressureMaps/ZeroOneClassification/Diff2013minus2008/tmp/global_cumulative_impact_intermediate"),
+             overwrite=TRUE)
+## Make zeros = 0 others =1
+  
+  data_layer <- raster(file.path(path, "ModifiedPressureMaps/ZeroOneClassification/Diff2013minus2008/tmp/global_cumulative_impact_intermediate"))  
+  reclassify(data_layer, c(-Inf, 99, 1,
+                           99, Inf, 0), 
+             filename=file.path(path, 
+                                'ModifiedPressureMaps/ZeroOneClassification/Diff2013minus2008/global_cumulative_impact'),
+             progress="text", overwrite=TRUE)  
+
+### count occurrences
+  diff <- raster(file.path(path, 
+                           'ModifiedPressureMaps/ZeroOneClassification/Diff2013minus2008/global_cumulative_impact'))
+  
+  Count_nonZero <- data.frame(pressure="cumulative impact",
+                              change="non-zero",
+                              Count=freq(diff, value=1, useNA="no", progress="text"))
+  Count_Zero <- data.frame( pressure="cumulative impact",
+                            change="zero",
+                            Count=freq(diff, value=0, useNA="no", progress="text"))
+  
+  newData <- rbind(Count_nonZero, Count_Zero)
+  
+write.csv(newData, file.path(path_save, "countData_changeVSnochange_cumulative.csv"), row.names=FALSE)
+
+
+countData <- read.csv(file.path(path_save, "countData_increaseVSdecrease_cumulative.csv"))
+noChangeData <- read.csv(file.path(path_save, "countData_changeVSnochange_cumulative.csv"))
+
+newData <- rbind(countData, noChangeData)
+newData$change <- as.character(newData$change)
+newData$change[newData$change=="non-zero"] <- "non_zero"
+
+newData <- newData %>%
+  spread(change, Count) %>%
+  select(pressure, decrease_cellCount=decrease, increase_cellCount=increase, noChange_cellCount=zero) %>%
+  mutate(decrease_percent = decrease_cellCount/(decrease_cellCount+increase_cellCount+noChange_cellCount)*100) %>%
+  mutate(increase_percent = increase_cellCount/(decrease_cellCount+increase_cellCount+noChange_cellCount)*100) %>%
+  mutate(noChange_percent = noChange_cellCount/(decrease_cellCount+increase_cellCount+noChange_cellCount)*100)
+
+write.csv(newData, file.path(path_save, "increaseVSdecrease_cumulative.csv"), row.names=FALSE)
+
+
+
+
+### General information for Ben:
+global_cumulative_impact_2008_all_layers <- raster(file.path(dir_halpern2008, 
+                                                             '/mnt/storage/marine_threats/impact_layers_2013_redo',
+                                                             'global_impact_model_2008/normalized_by_two_time_periods/averaged_by_num_ecosystems/all_layers_except_shipping_oceanpollution_invasives/cumulative/global_cumul_impact_2008_all_layers_except_shipping_oceanpollution_invasives.tif'))
+
+dir_2013_2 <- file.path(dir_halpern2008, 
+                        '/mnt/storage/marine_threats/impact_layers_2013_redo',
+                        'global_impact_model_2013/normalized_by_two_time_periods/averaged_by_num_ecosystems')
+
+cumulative_impacts <- raster(file.path(dir_2013_2, 
+                                       "all_layers_except_shipping_oceanpollution_invasives_slr/cumulative/global_cumul_impact_2013_all_layers_except_shipping_oceanpollution_invasives_slr.tif"))
+
+
+
+
+
 
 
 
