@@ -25,14 +25,13 @@ myFiles = file.path(dir_neptune_data, "git-annex/Global/NCEAS-Pressures-Summarie
 
 # land/ocean layers for plots ----
 # rgn_ocn_cntry <- readOGR("/var/data/ohi/model/GL-NCEAS-OceanRegions_v2013a/data", layer="rgn_ocean_cntry_mol")
-rgn_ocn_cntry <- readOGR("/var/data/ohi/model/GL-NCEAS-OceanRegions_v2013a/data", layer="rgn_ocean_cntry_gcs")
+#rgn_ocn_cntry <- readOGR("/var/data/ohi/model/GL-NCEAS-OceanRegions_v2013a/data", layer="rgn_ocean_cntry_gcs")
+rgn_ocn_cntry <- readOGR("/var/data/ohi/model/GL-NCEAS-OceanRegions_v2013a/data", layer="rgn_ocean_cntry_gcs_mer_neg150")
 ocean  <-  rgn_ocn_cntry[is.na(rgn_ocn_cntry@data$ISO_3digit) & rgn_ocn_cntry@data$rgn_id==0,]
 land  <-  rgn_ocn_cntry[!is.na(rgn_ocn_cntry@data$ISO_3digit) & rgn_ocn_cntry@data$rgn_id==0,]
 rgnOHI <-  rgn_ocn_cntry[rgn_ocn_cntry@data$rgn_id>0,]
 
 plot(ocean, col="blue")
-
-## need wgs84 format
 
 # LME plots ----
 data <- read.csv('ZonalExtractionData/oneYearNorm_2013_lme.csv') 
@@ -42,13 +41,15 @@ data <- read.csv('ZonalExtractionData/oneYearNorm_2013_lme.csv')
 # lme <- readOGR(dsn="/var/data/ohi/git-annex/Global/NCEAS-Pressures-Summaries_frazier2013/RegionMaps/newLME_Mollweide",
 #                 layer="newLME_Mollweide") 
 
-lme <- readOGR(dsn="/var/data/ohi/git-annex/Global/NCEAS-Pressures-Summaries_frazier2013/TWAP LME summary/InputData/newLME_wgs",
-                layer="newLME") 
+# lme <- readOGR(dsn="/var/data/ohi/git-annex/Global/NCEAS-Pressures-Summaries_frazier2013/TWAP LME summary/InputData/newLME_wgs",
+#                 layer="newLME") 
+lme  <- readOGR(dsn="/var/data/ohi/git-annex/Global/NCEAS-Pressures-Summaries_frazier2013/TWAP LME summary/InputData/LME_wgs_mer_neg150", "LME_wgs_mer_neg150")
 
 lme@data <- join(lme@data, data, by=c("LME_NAME", "LME_NUMBER"))
 
 # warm <- readOGR(dsn=file.path(myFiles, "RegionMaps/WARM"), layer="WARM_mol")
-warm <- readOGR(dsn=file.path(myFiles, "RegionMaps/WARM"), layer="WARM")
+#warm <- readOGR(dsn=file.path(myFiles, "RegionMaps/WARM"), layer="WARM")
+warm <- readOGR(dsn=file.path(myFiles, "RegionMaps/WARM"), layer="WARM_gcs_mer_neg150")
 
 
 data_warm <- read.csv('ZonalExtractionData/oneYearNorm_2013_warm.csv') %>%
@@ -60,7 +61,7 @@ col.brks=c(0, 2.95, 3.50, 3.86, 4.31, 10)
 colors <- c('#92CDDC70', '#92D05070', '#FFFF0070', '#FFC00070', '#FF000070')
 
 # function 
-plotCHI <- function(fig=file.path(path_save, "CHI_LME_wgs.png"), shapeFile=lme, var=lme@data$global_cumul_impact_2013_all_layers){
+plotCHI <- function(fig=file.path(path_save, "CHI_LME_wgs_mer_neg150.png"), shapeFile=lme, var=lme@data$global_cumul_impact_2013_all_layers){
   png(file=fig, width=1200, height=800, res=150, pointsize=18, type='cairo')
  par(oma=c(0,0,0,0),
       mar=c(1.5,1,0,1))
@@ -120,7 +121,7 @@ set_ll_warn(FALSE)
 set_ll_TOL(0.1)
 
 fao <- readOGR(dsn="/var/data/ohi/git-annex/Global/NCEAS-Pressures-Summaries_frazier2013/RegionMaps/FAO_regions",
-               layer="FAO_rgns")
+               layer="FAO_regions_gcs_mer_neg150")
 fao@data <- join(fao@data, fao_data, by=c("rgn_id", "rgn_nam"))
 
 col.brks=0:5
@@ -128,7 +129,7 @@ colors <- c('#1E90FF70', '#92D05070', '#FFFF0070', '#FFC00070', '#FF000070')
 #1E90FF70 #cadetblue
 #104E8B70
 # function 
-plotCHI_fao <- function(fig=file.path(path_save, "CHI_FAO_wgs.png"), shapeFile=fao, var=fao@data$global_cumul_impact_2013_all_layers){
+plotCHI_fao <- function(fig=file.path(path_save, "CHI_FAO_wgs_mer_neg150.png"), shapeFile=fao, var=fao@data$global_cumul_impact_2013_all_layers){
   png(file=fig, width=1200, height=800, res=150, pointsize=18, type='cairo')
   par(oma=c(0,0,0,0),
       mar=c(1.5,1,0,1))
