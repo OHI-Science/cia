@@ -154,7 +154,7 @@ plotCHI_fao <- function(fig=file.path(path_save, "CHI_FAO_wgs_mer_neg150.png"), 
         z = matrix(1:5), col=colors, add=T)
   rect(x1-ixd,y1,x2+ixd,y2, border='gray20')
   text(x = ix,
-       y = y1, cex=1, pos=1, # adj=c(0.5,0), # , offset=0.1,
+       y = y1, cex=1, pos=1, # adj=c(0.5,0),  # , offset=0.1,
        labels=c(1:5)) 
   par(xpd=F) # turn back on clipping to plot region
   dev.off()
