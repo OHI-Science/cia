@@ -1,0 +1,16 @@
+---
+title: "README"
+output: html_document
+---
+
+Data request from Ben H. on Jan 27 2014
+
+> Some collaborators of mine have asked for two data layers from me. I think/hope these are > easy to create, but maybe not.  From the original 2008 CHI paper, they would like the 
+> following, in WGS84 projection:
+
+> 1. The whole cumulative impact MINUS the SST layer
+> 2. The cumulative impact MINUS all three climate change layers (SST, UV, Acidification)
+
+> Two ways to do this -- either sum up the impact layers (not the intensity layers before 
+> multiplying by the vulnerability scores, but the impact layers) for the set of layers to > include, or subtract the climate impact layer(s) from the overall cumulative impact layer > (that better produce the same result!!).
+
