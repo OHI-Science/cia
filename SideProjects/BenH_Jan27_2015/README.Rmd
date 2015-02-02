@@ -14,3 +14,19 @@ Data request from Ben H. on Jan 27 2014
 > Two ways to do this -- either sum up the impact layers (not the intensity layers before 
 > multiplying by the vulnerability scores, but the impact layers) for the set of layers to > include, or subtract the climate impact layer(s) from the overall cumulative impact layer > (that better produce the same result!!).
 
+Discovered that the impact layers on the web are not adjusted for habitat.  Consequently, we can't just subtract these from the Cumulative Impacts layer.
+
+It appears I need to apply the habitat model to each of these impacts prior to subtracting it from the model.
+
+Here is the general method:
+1. multiply each habitat layer (I am assuming these are ones and zeros) by the relevant pressure/habitat vulnerability (habitat_vulnerability)
+2. multiply habitat_vulnerability by the normalized impact layer (habitat_vulnerability_impact)
+3. sum all the habitat_vulnerability_impact layers (in 2013 these were then divided by the number of habitats...but in 2008 we stop at summing)
+
+# Data location:
+Impact files: Z:\mnt\storage\marine_threats\data\completed\impacts\transformed
+Cum Impacts: Z:\mnt\storage\marine_threats\data\completed\models\model\grid
+Habitats: Z:\mnt\storage\marine_threats\impact_layers_2013_redo\supporting_layers\habitats
+Matrix: Z:\mnt\storage\marine_threats\impact_layers_2013_redo\impact_layers\work (but modified and saved in git)
+
+

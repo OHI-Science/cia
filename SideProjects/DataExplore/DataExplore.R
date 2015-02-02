@@ -22,3 +22,7 @@ rasters = file.path(dir_halpern2008,
 
 final_sst <- raster(file.path(rasters, "impact_layers/final_impact_layers/threats_2013_final/normalized_by_one_time_period/sst.tif"))
 interim_sst <- raster(file.path(rasters, 'impact_layers/final_impact_layers/threats_2013_interim/new_layers/sst/moll_nontrans_unclipped_1km_pos_transoneperiod_clipped/sst.tif'))
+
+final_sst <- raster(file.path(rasters, "impact_layers/final_impact_layers/threats_2013_final/normalized_by_one_time_period/sst.tif"))
+
+tmp <- raster(file.path(rasters, "global_impact_model_2013/normalized_by_one_time_period/averaged_by_num_ecosystems/by_threat/sst_combo.tif"))
