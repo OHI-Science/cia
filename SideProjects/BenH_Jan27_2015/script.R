@@ -51,8 +51,28 @@ overlay(habitat, pressure, fun=function(x,y){(x*y*vulnerability)},
 }
 
 ### Full CumImpact model
-cumImpact <- raster(file.path(dir_halpern2008, "mnt/storage/marine_threats/data/completed/models/model/grid/model"))
-crs(cumImpact) <- crs(raster(file.path(rast_save, 'sst_seamounts_combo')))
+cumImpact_old <- raster(file.path(dir_halpern2008, "mnt/storage/marine_threats/data/completed/models/model/grid/model"))
+crs(cumImpact_old) <- crs(raster(file.path(rast_save, 'sst_seamounts_combo')))
+plot(cumImpact_old)
+hist(cumImpact_old)
+
+### Recalculate full model
+## Sum all files
+all_files <- unique(substr(list.files(rast_save), 1, nchar(list.files(rast_save))-4))
+all_s <- stack()
+for(i in all_files){
+  all_s <- stack(all_s, raster(file.path(rast_save, i)))
+}
+
+calc(all_s, sum, filename=file.path(rast_save_ci, "cumulative_impacts_model"), progress="text", na.rm=TRUE, overwrite=TRUE)
+cum_impact_new <- raster(file.path(rast_save_ci, "cumulative_impacts_model"))
+plot(cum_impact_new)
+hist(cum_impact_new)
+
+raster::crop(cumImpact_old, cum_impact_new, filename=file.path(rast_save_ci, "cumulative_impacts_model_old_crop"), progress='text')
+
+raster:plot(cum_impact_new, raster(file.path(rast_save_ci, "cumulative_impacts_model_old_crop")), ylab="old 2008 scores", xlab="new 2008 scores", maxpixels=1000000, col=rgb(0,0,0,0.2))   
+
 
 ## Minus SST
 sst_files <- unique(substr(list.files(rast_save, "sst"), 1, nchar(list.files(rast_save, "sst"))-4))  #get unique files after cutting off extension
@@ -67,6 +87,7 @@ sst_ci_raster <- raster(file.path(rast_save_ci, "sst_ci"))
 extend(sst_ci_raster, cumImpact, 
        filename=file.path(rast_save_ci, "sst_ci_extend"),
        progress="text") 
+sst_impact <- raster(file.path(rast_save_ci, "sst_ci_extend"))
 
 mod_minus_sst_stack <- stack(cumImpact, file.path(rast_save_ci, "sst_ci_extend"))
 overlay(mod_minus_sst_stack, fun=function(a,b) a-b,
