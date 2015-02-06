@@ -29,4 +29,5 @@ Cum Impacts: Z:\mnt\storage\marine_threats\data\completed\models\model\grid
 Habitats: Z:\mnt\storage\marine_threats\impact_layers_2013_redo\supporting_layers\habitats
 Matrix: Z:\mnt\storage\marine_threats\impact_layers_2013_redo\impact_layers\work (but modified and saved in git)
 
-
+# Vulnerability matrix
+There were some changes to the dem_nd_lb between the 2008 and 2013 analysis.  
