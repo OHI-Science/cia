@@ -16,15 +16,15 @@ rast_save <- file.path(dir_neptune_data, "git-annex/Global/NCEAS-Pressures-Summa
 rast_save_ci <- file.path(dir_neptune_data, "git-annex/Global/NCEAS-Pressures-Summaries_frazier2013/SideProjects/BenH_Jan27_2015/Habitat_cumImpact")
 
 ## vulnerability matrix
-vuln <- read.csv('SideProjects/BenH_Jan27_2015/vulnerability_weighting_matrix.csv')
+vuln <- read.csv('SideProjects/BenH_Jan27_2015/vulnerability_weighting_matrix_2008.csv')
 
 ## pressure data (check that these are zero to one values - like what I saw on the website)
-#sst <- raster(file.path(dir_halpern2008, "mnt/storage/marine_threats/data/completed/impacts/transformed/sst/grid/sst"))
 pressures <- dir(file.path(dir_halpern2008, "mnt/storage/marine_threats/data/completed/impacts/transformed/"))
 pressures <- pressures[-(which(pressures %in% c("metadata.sgml",
                                   "metadata.zip",
                                   "tiff_to_asc.sh")))]
-#pressures <- c("ocean_acidification", "sst", "uv")
+#pressures <- c("dem_nd_lb")
+
 ## habitat (values are 1 and NA)
 habitats <- list.files(file.path(dir_halpern2008, "mnt/storage/marine_threats/impact_layers_2013_redo/supporting_layers/habitats"))
 habitats <- unique(sub("_lzw.*", "", habitats))
@@ -33,13 +33,14 @@ habitats <- habitats[-which(habitats=="show_rast_stats.sh")]
 
 
 ## loop to get model data
+## deep_waters habitat is different...
 for(j in pressures){#j = "uv"
 if(j=="artisanal_fishing"){
 pressure <- raster(file.path(dir_halpern2008, sprintf("mnt/storage/marine_threats/data/completed/impacts/transformed/%s/grid/artisanal", j)))
 } else if(j=="ocean_acidification"){pressure <- raster(file.path(dir_halpern2008, sprintf("mnt/storage/marine_threats/data/completed/impacts/transformed/%s/grid/acid", j)))
 } else{pressure <- raster(file.path(dir_halpern2008, sprintf("mnt/storage/marine_threats/data/completed/impacts/transformed/%s/grid/%s", j, j)))}
 
-for(i in habitats){#i="beach"
+for(i in habitats){#i="suspension_reef"
 habitat <- raster(file.path(dir_halpern2008, sprintf("mnt/storage/marine_threats/impact_layers_2013_redo/supporting_layers/habitats/%s_lzw.tif", i)))
 vulnerability <- vuln %>%
   filter(pressure==j) %>%
@@ -50,6 +51,9 @@ overlay(habitat, pressure, fun=function(x,y){(x*y*vulnerability)},
 }
 }
 
+plot(pressure, main=j)
+# this habitat is strange:
+#habitat <- raster(file.path(dir_halpern2008, "mnt/storage/marine_threats/data/completed/ecosystems/deep_waters/grid/deep_waters"))
 ### Full CumImpact model
 cumImpact_old <- raster(file.path(dir_halpern2008, "mnt/storage/marine_threats/data/completed/models/model/grid/model"))
 crs(cumImpact_old) <- crs(raster(file.path(rast_save, 'sst_seamounts_combo')))
@@ -64,6 +68,7 @@ for(i in all_files){
   all_s <- stack(all_s, raster(file.path(rast_save, i)))
 }
 
+
 calc(all_s, sum, filename=file.path(rast_save_ci, "cumulative_impacts_model"), progress="text", na.rm=TRUE, overwrite=TRUE)
 cum_impact_new <- raster(file.path(rast_save_ci, "cumulative_impacts_model"))
 plot(cum_impact_new)
@@ -72,6 +77,52 @@ hist(cum_impact_new)
 raster::crop(cumImpact_old, cum_impact_new, filename=file.path(rast_save_ci, "cumulative_impacts_model_old_crop"), progress='text')
 
 raster:plot(cum_impact_new, raster(file.path(rast_save_ci, "cumulative_impacts_model_old_crop")), ylab="old 2008 scores", xlab="new 2008 scores", maxpixels=1000000, col=rgb(0,0,0,0.2))   
+abline(0,1, col="red")
+
+#overlay(cum_impact_new, raster(file.path(rast_save_ci, "cumulative_impacts_model_old_crop")), 
+#        fun=function(x,y){(x-y)}, 
+#        filename=file.path(rast_save_ci, 'new_minus_old_Cum_Impact'), progress="text", overwrite=TRUE)
+
+#new_minus_old_ci <- raster(file.path(rast_save_ci, 'new_minus_old_Cum_Impact'))
+plot(new_minus_old_ci)
+click(new_minus_old_ci)
+
+plot(cum_impact_new)
+click(cum_impact_new) ## general values in ocean about 10-13
+
+## In the ocean it seems the vaues are about 1.5 higher.
+## habitats that could influence this: d_s_benthic, deep_waters, surface_waters
+## pressures: "dem_nd_lb", "dem_nd_hb", "ocean_acidification" (~1), pel_lb (~0.1), pollution (~0.2), shipping (~0.2), sst (~.6), uv(~.7)
+## possible that uv was excluded from model?  Nope:  did not improve
+## check that layers are the same: uv and sst and acid
+
+## Sum all files - except deep_waters 
+all_files <- unique(substr(list.files(rast_save), 1, nchar(list.files(rast_save))-4))
+grep("deep_waters", all_files)
+all_files_minus_dw <- all_files[-grep("deep_waters", all_files)]
+
+all_s_minus_dw <- stack()
+for(i in all_files_minus_dw){
+  all_s_minus_dw <- stack(all_s_minus_dw, raster(file.path(rast_save, i)))
+}
+
+calc(all_s_minus_dw, sum, filename=file.path(rast_save_ci, "cumulative_impacts_model_minus_dw"), progress="text", na.rm=TRUE, overwrite=TRUE)
+cum_impact_new_minus_dw <- raster(file.path(rast_save_ci, "cumulative_impacts_model_minus_dw"))
+
+raster:plot(cum_impact_new_minus_dw, raster(file.path(rast_save_ci, "cumulative_impacts_model_old_crop")), ylab="old 2008 scores", xlab="new 2008 scores minus uv", maxpixels=1000000, col=rgb(0,0,0,0.2))   
+abline(0,1, col="red")
+
+overlay(cum_impact_new_minus_acid, raster(file.path(rast_save_ci, "cumulative_impacts_model_old_crop")), 
+        fun=function(x,y){(x-y)}, 
+        filename=file.path(rast_save_ci, 'new_minus_old_Cum_Impact_minus_acid'), progress="text", overwrite=TRUE)
+
+new_minus_old_ci_minus_acid <- raster(file.path(rast_save_ci, 'new_minus_old_Cum_Impact_minus_acid'))
+plot(new_minus_old_ci_minus_acid)
+click(new_minus_old_ci_minus_acid)
+
+plot(cum_impact_new)
+click(cum_impact_new) ## general values in ocean about 10-13
+
 
 
 ## Minus SST
