@@ -483,7 +483,7 @@ ggplot(datadiff2, aes(x=global_cumul_impact_2013_minus_2008, y=global_cumul_impa
   geom_vline(xintercept=0, color="red", linetype=2) +
   #geom_text(aes(label=eez_nam)) + 
   geom_text(aes(label=label), size=4, hjust=1) +
-  labs(x="Change in cumulative impact", y='Cumulative impact in 2013', size=expression("ocean area, km"^2), fill=expression("ln pop trend")) +
+  labs(x="Change in cumulative impact", y='Cumulative impact in 2013', size=expression("ocean area, km"^2), fill=expression("pop trend")) +
   scale_size(range=c(3,15)) +
   scale_fill_gradientn(colours=rev(brewer.pal(11, "Spectral")), values=seq(-0.05, 0.05, length=11),  
                        rescaler = function(x, ...) x, oob = identity, na.value="white") +
