@@ -241,12 +241,27 @@ stack_2013_one <- stack(stack_2013_one, raster(file.path(rasters,
                                                          'global_impact_model_2013/normalized_by_one_time_period/averaged_by_num_ecosystems/all_layers/global_cumul_impact_2013_all_layers.tif')))
 
 ## Summarize by region
-meow_extract(stack=stack_2013_one, fileOutput="oneYearNorm_2013_meow.csv")
 lme_extract(stack=stack_2013_one, fileOutput="oneYearNorm_2013_lme.csv")          
 eez_extract(stack=stack_2013_one, fileOutput="oneYearNorm_2013_eez.csv")
 fao_extract(stack=stack_2013_one, fileOutput="oneYearNorm_2013_fao.csv")
 warm_extract(stack=stack_2013_one, fileOutput="oneYearNorm_2013_warm.csv")
 
+
+# The above were extracted using the raster files where land was a zero.
+# I checked and this looked fine for the above rasters - but for MEOW 
+# I need to convert the land to NA
+
+tifs = list.files(file.path(myFiles, 'TrimmedPressureLayers/Pressures2013'), pattern=glob2rx('*.gri'))
+
+stack_2013_one <- stack()
+for(i in 1:length(tifs)){
+  tmp <- raster(file.path(myFiles, 'TrimmedPressureLayers/Pressures2013', tifs[i]))
+  stack_2013_one <- stack(stack_2013_one, tmp )
+}
+names(stack_2013_one) <- sub("_combo.gri", "", tifs)
+
+meow_extract(stack=stack_2013_one, fileOutput="oneYearNorm_2013_meow.csv")
+eez_extract(stack=stack_2013_one, fileOutput="withZero2NA/oneYearNorm_2013_meow_zeroData.csv")
 
  ########################################################
 # 2013/normalized two time periods/averaged by num ecosystems ---- 
@@ -313,12 +328,24 @@ stack_diff_two <- stack(stack_diff_two,
 )
 
 ## Summarize by region
-meow_extract(stack=stack_diff_two, fileOutput="diff_2013minus2008_meow.csv")
 lme_extract(stack=stack_diff_two, fileOutput="diff_2013minus2008_lme.csv")          
 eez_extract(stack=stack_diff_two, fileOutput="diff_2013minus2008_eez.csv")
 fao_extract(stack=stack_diff_two, fileOutput="diff_2013minus2008_fao.csv")
 warm_extract(stack=stack_diff_two, fileOutput="diff_2013minus2008_warm.csv")
 
+# The above were extracted using the raster files where land was a zero.
+# I checked and this looked fine for the above rasters - but for MEOW 
+# I need to convert the land to NA
+
+tifs = list.files(file.path(myFiles, 'TrimmedPressureLayers/Pressures2013minus2008'), pattern=glob2rx('*.gri'))
+
+stack_diff_two <- stack()
+for(i in 1:length(tifs)){
+  tmp <- raster(file.path(myFiles, 'TrimmedPressureLayers/Pressures2013minus2008', tifs[i]))
+  stack_diff_two <- stack(stack_diff_two, tmp )
+}
+names(stack_diff_two) <- sub("_combo_dif.gri", "", tifs)
+meow_extract(stack=stack_diff_two, fileOutput="diff_2013minus2008_meow.csv")
 
 
 #########################################################
