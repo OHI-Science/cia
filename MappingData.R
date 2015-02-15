@@ -18,6 +18,7 @@ library(rasterVis)
 library(RColorBrewer)
 library(fields)
 #library(ggplot2)
+#library(grid) #needed for myTheme function
 #library(spatial.tools)
 #library(classInt)
 
@@ -27,7 +28,7 @@ dir.create(tmpdir, showWarnings=F)
 rasterOptions(tmpdir=tmpdir)
 
 myTheme <- theme_bw() + theme(axis.text=element_text(size=20), 
-                              axis.title=element_text(size=20, vjust=.15),
+                              axis.title=element_text(size=20, vjust=.75),
                               plot.margin=unit(c(1,1,1,1), "lines"),
                               legend.title = element_text(size=20),
                               legend.text= element_text(size=20),
@@ -66,7 +67,7 @@ raster_defaultLegend <- function(raster_data, saveLoc, title_legend=NA, title_pl
   dev.off()
 }
 
-raster_breaks <- function(raster_data, saveLoc, title, myBreaks, cols){
+raster_breaks <- function(raster_data, saveLoc, title, title_legend=NULL, myBreaks, cols){
 #   par(mar=c(2,2,2,2))
 #   par(oma=c(0,0,0,4))
 png(file.path(path_save, saveLoc), res=500, width=7, height=7, units="in")
@@ -78,6 +79,7 @@ image.plot(raster_data, zlim = c(min(myBreaks), max(myBreaks)),
            legend.shrink=legend.shrink,
            legend.width=legend.width,
            col = cols,
+           legend.lab=title_legend,
            axis.args = list(at = def_breaks, labels = round(myBreaks, 1), cex.axis=.8))
 plot(land, add=TRUE, border="gray80", col="gray90", lwd=0.5)
 dev.off()
@@ -242,6 +244,40 @@ raster_defaultLegend(raster_data=diff_noLand,
                      title_legend="Change in\ncumulative impact",
                      cols = rev(colorRampPalette(brewer.pal(11, 'Spectral'))(250)))
 
+## getting percent difference:
+## diff_noLand/2008 raster layer
+
+# Take a peak at the 2013 data to get a feel for what I am expecting:
+dir_2013_2 <- file.path(dir_halpern2008, 
+                        '/mnt/storage/marine_threats/impact_layers_2013_redo',
+                        'global_impact_model_2013/normalized_by_two_time_periods/averaged_by_num_ecosystems')
+
+cumulative_impacts <- raster(file.path(dir_2013_2, 
+                                       "all_layers_except_shipping_oceanpollution_invasives_slr/cumulative/global_cumul_impact_2013_all_layers_except_shipping_oceanpollution_invasives_slr.tif"))
+
+plot(cumulative_impacts)
+
+global_cumulative_impact_2008_all_layers <- raster(file.path(dir_halpern2008, 
+                                                             '/mnt/storage/marine_threats/impact_layers_2013_redo',
+                                                             'global_impact_model_2008/normalized_by_two_time_periods/averaged_by_num_ecosystems/all_layers_except_shipping_oceanpollution_invasives/cumulative/global_cumul_impact_2008_all_layers_except_shipping_oceanpollution_invasives.tif'))
+
+plot(global_cumulative_impact_2008_all_layers)
+
+overlay(diff_noLand, global_cumulative_impact_2008_all_layers, fun=function(x,y){x/y*100}, 
+        filename=file.path(path, "ModifiedPressureMaps/PercentChange2008to2013"), progress="text", overwrite=TRUE)
+
+perRaster <- raster(file.path(path, "ModifiedPressureMaps/PercentChange2008to2013"))
+histogram(perRaster)
+
+my_breaks <- c(-100, -50, -25, -10, 0, 10, 25, 50, 100, 150, 200, 250, 300) 
+
+cols = rev(colorRampPalette(brewer.pal(11, 'Spectral'))(length(my_breaks)+2)) #stripping extreme ends of the color spectrum
+#cols = rev(brewer.pal(11, 'Spectral')) #full spectrum
+cols = c("#3E77B5", "#48A0B2", "#6FC5A4", "#A1D9A4",  #2-5
+         "#FFFFBF", "#FEE899", "#FDCA78", "#FBA45C", "#F57647", "#E25249", "#C52C4B", "#9E0142") #8-15
+raster_breaks(raster_data=perRaster, saveLoc="Fig1c.PercentChange.png", 
+              myBreaks=my_breaks, cols=cols)
+
 
 ## determine cells >0
 reclassify(diff_noLand, c(-Inf,0, 0, 
@@ -306,7 +342,7 @@ par(mar=c(2,2,2,2))
 par(oma=c(0,0,0,4))
 arg <- list(at=c(-2,-1,0,1,2), 
             labels=c("low/\n decreasing", "low/\n increasing", "neither", "high/\n decreasing", "high/\n increasing"), 
-            cex.axis=0.9)
+            cex.axis=0.8)
 
 color <- c("#8BB4EC", "#B2D698", "#F7EE3B0D", "#E77D27", "#991219") # trying rainbow color scheme
 #color <- c("#023FA5", "#BEC1D4", "#D1D1D10D", "#D6BCC0", "#8E063B") #red/blue color scheme
@@ -319,25 +355,26 @@ dev.off()
 
 
 ## Fig. 2: EEZ change in CHI vs. absolute CHI ----
-
+library(dplyr)
+library(ggplot2)
 eez2ohi <- read.csv(file.path(dir_neptune_data, "model/GL-NCEAS-OceanRegions_v2013a/data/rgn_2013master.csv"), stringsAsFactors=FALSE) %>%
   select(rgn_id_2013, eez_id, eez_nam)
 
-eez2ohi$eez_id[eez2ohi$rgn_id==137] <- 137
+eez2ohi$eez_id[eez2ohi$rgn_id_2013==137] <- 137
 eez2ohi <- rbind(eez2ohi, data.frame(rgn_id_2013=137, eez_id=109, eez_nam="Ecuador|Galapagos Islands"))
 
-eez2ohi$eez_nam[eez2ohi$rgn_id==163] <- "United States"
+eez2ohi$eez_nam[eez2ohi$rgn_id_2013==163] <- "United States"
 eez2ohi <- rbind(eez2ohi, data.frame(rgn_id_2013=163, eez_id=160, eez_nam="United States"))
 eez2ohi <- rbind(eez2ohi, data.frame(rgn_id_2013=163, eez_id=163, eez_nam="United States"))
 
 eez2ohi <- rbind(eez2ohi, data.frame(rgn_id_2013=171, eez_id=87, eez_nam="Brazil|Trindade"))
 
-eez2ohi$eez_id[eez2ohi$rgn_id==224] <- 224
+eez2ohi$eez_id[eez2ohi$rgn_id_2013==224] <- 224
 eez2ohi <- rbind(eez2ohi, data.frame(rgn_id_2013=224, eez_id=225, eez_nam="Chile|Easter Island"))
 
 
-eez2ohi$eez_nam[eez2ohi$rgn_id==32] <- "Reunion"
-eez2ohi$eez_nam[eez2ohi$rgn_id==100] <- "Republique du Congo"
+eez2ohi$eez_nam[eez2ohi$rgn_id_2013==32] <- "Reunion"
+eez2ohi$eez_nam[eez2ohi$rgn_id_2013==100] <- "Republique du Congo"
 
 eezArea <- read.csv(file.path(dir_neptune_data, "model/GL-NCEAS-OceanRegions_v2013a/data/eez_area.csv"), stringsAsFactors=FALSE)%>%
   mutate(eez_id = as.character(eez_id)) %>%
@@ -388,9 +425,56 @@ datadiff2 <- datadiff %>%
   left_join(coastal_pop_trend, by=c("rgn_id_2013")) %>%
     mutate(log_area_km2 = log(area_km2))
 
-
+# hdi <- read.csv("../ohiprep/Global/GL-UNDP-HDI_v2012_continuousVals/data/hdi.csv")  %>%
+#   select(rgn_id_2013=rgn_id, hdi=HDI)
+# # tried this - but was confusing because such a strong negative relationship between hdi and population trend
+# 
+# datadiff2 <- datadiff2 %>%
+#   left_join(hdi)
 
 datadiff2$label <- ifelse(datadiff2$label==1, as.character(datadiff2$eez_nam), NA)
+
+## some analyses:
+mod1 <- lm(global_cumul_impact_2013_all_layers ~ log_area_km2 + log_population + pop_trend, data=datadiff2)
+mod2 <- lm(global_cumul_impact_2013_all_layers ~ log_area_km2 + log_population, data=datadiff2)
+BIC(mod1, mod2)
+
+ggplot(datadiff2, aes(y=global_cumul_impact_2013_all_layers, x=log_area_km2)) +
+  myTheme+
+  geom_point(size=2.5, shape=19)+
+  labs(y="Cumulative impact in 2013", x=expression("Ocean area, ln km"^2)) +
+  stat_smooth(method=lm)  
+ggsave(file.path(path_save, 'Supplement_CHI2013vsOceanArea.png'), width=7, height=6, dpi=300)
+
+ggplot(datadiff2, aes(y=global_cumul_impact_2013_all_layers, x=log_population)) +
+  myTheme+
+  geom_point(size=2.5, shape=19)+
+  labs(y="Cumulative impact in 2013", x="Coastal population, ln") +
+  stat_smooth(method=lm)  
+ggsave(file.path(path_save, 'Supplement_CHI2013vsPopulation.png'), width=7, height=6, dpi=300)
+
+
+mod3 <- lm(global_cumul_impact_2013_minus_2008 ~ log_area_km2 + log_population + pop_trend, data=datadiff2)
+mod4 <- lm(global_cumul_impact_2013_minus_2008 ~ log_area_km2 + pop_trend, data=datadiff2)
+BIC(mod3, mod4)
+
+ggplot(datadiff2, aes(y=global_cumul_impact_2013_minus_2008, x=pop_trend)) +
+  myTheme+
+  geom_point(size=2.5, shape=19)+
+  labs(y="Change in cumulative impact", x="Coastal population trend") +
+  stat_smooth(method=lm)  
+ggsave(file.path(path_save, 'Supplement_2013minus2008vsPopTrend.png'), width=7, height=6, dpi=300)
+
+ggplot(datadiff2, aes(y=global_cumul_impact_2013_minus_2008, x=log_area_km2)) +
+  myTheme+
+  geom_point(size=2.5, shape=19)+
+  labs(y="Change in cumulative impact", x=expression("Ocean area, ln km"^2)) +
+  stat_smooth(method=lm)  
+ggsave(file.path(path_save, 'Supplement_2013minus2008vsOceanArea.png'), width=7, height=6, dpi=300)
+
+
+mod <- lm(global_cumul_impact_2013_minus_2008 ~ global_cumul_impact_2013_all_layers, data=datadiff2)
+
 
 #my_cols <- diverge_hcl(3, c=100, l=c(50, 90), power=1)
 ggplot(datadiff2, aes(x=global_cumul_impact_2013_minus_2008, y=global_cumul_impact_2013_all_layers, size=area_km2)) +
@@ -399,7 +483,7 @@ ggplot(datadiff2, aes(x=global_cumul_impact_2013_minus_2008, y=global_cumul_impa
   geom_vline(xintercept=0, color="red", linetype=2) +
   #geom_text(aes(label=eez_nam)) + 
   geom_text(aes(label=label), size=4, hjust=1) +
-  labs(x="Change in cumulative impact", y='Cumulative impact in 2013', size=expression("ocean area, km"^2), fill=expression("ln pop trend")) +
+  labs(x="Change in cumulative impact", y='Cumulative impact in 2013', size=expression("ocean area, km"^2), fill=expression("pop trend")) +
   scale_size(range=c(3,15)) +
   scale_fill_gradientn(colours=rev(brewer.pal(11, "Spectral")), values=seq(-0.05, 0.05, length=11),  
                        rescaler = function(x, ...) x, oob = identity, na.value="white") +
