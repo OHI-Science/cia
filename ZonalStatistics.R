@@ -290,6 +290,21 @@ fao_extract(stack=stack_2013_two, fileOutput="twoYearNorm_2013_fao.csv")
 warm_extract(stack=stack_2013_two, fileOutput="twoYearNorm_2013_warm.csv")
 
 
+### For land converted from zero to NA
+tifs = list.files(file.path(myFiles, 'TrimmedPressureLayers/Pressures2013_two_years'), pattern=glob2rx('*.gri'))
+
+stack_2013_two <- stack()
+for(i in 1:length(tifs)){
+  tmp <- raster(file.path(myFiles, 'TrimmedPressureLayers/Pressures2013_two_years', tifs[i]))
+  stack_2013_two <- stack(stack_2013_two, tmp )
+}
+names(stack_2013_two) <- sub("_combo.gri", "", tifs)
+
+meow_extract(stack=stack_2013_two, fileOutput="withZero2NA/twoYearNorm_2013_meow_zeroData.csv")
+eez_extract(stack=stack_2013_two, fileOutput="withZero2NA/twoYearNorm_2013_eez_zeroData.csv")
+lme_extract(stack=stack_2013_two, fileOutput="withZero2NA/twoYearNorm_2013_lme_zeroData.csv")
+
+
 ########################################################
 # 2008/normalized two time periods/averaged by num ecosystems ---- 
 # NOTE:  This is the most complete data for 2013, but can't be compared to 2008 data
@@ -349,7 +364,7 @@ for(i in 1:length(tifs)){
 names(stack_diff_two) <- sub("_combo_dif.gri", "", tifs)
 meow_extract(stack=stack_diff_two, fileOutput="diff_2013minus2008_meow.csv")
 eez_extract(stack=stack_diff_two, fileOutput="withZero2NA/diff_2013minus2008_eez_zeroData.csv")
-fao_extract(stack=stack_diff_two, fileOutput="withZero2NA/diff_2013minus2008_fao_zeroData.csv")
+lme_extract(stack=stack_diff_two, fileOutput="withZero2NA/diff_2013minus2008_lme_zeroData.csv")
 
 
 #########################################################
