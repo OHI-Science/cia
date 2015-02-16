@@ -261,7 +261,9 @@ for(i in 1:length(tifs)){
 names(stack_2013_one) <- sub("_combo.gri", "", tifs)
 
 meow_extract(stack=stack_2013_one, fileOutput="oneYearNorm_2013_meow.csv")
-eez_extract(stack=stack_2013_one, fileOutput="withZero2NA/oneYearNorm_2013_meow_zeroData.csv")
+eez_extract(stack=stack_2013_one, fileOutput="withZero2NA/oneYearNorm_2013_eez_zeroData.csv")
+fao_extract(stack=stack_2013_one, fileOutput="withZero2NA/oneYearNorm_2013_fao_zeroData.csv")
+lme_extract(stack=stack_2013_one, fileOutput="withZero2NA/oneYearNorm_2013_lme_zeroData.csv")
 
  ########################################################
 # 2013/normalized two time periods/averaged by num ecosystems ---- 
@@ -346,6 +348,8 @@ for(i in 1:length(tifs)){
 }
 names(stack_diff_two) <- sub("_combo_dif.gri", "", tifs)
 meow_extract(stack=stack_diff_two, fileOutput="diff_2013minus2008_meow.csv")
+eez_extract(stack=stack_diff_two, fileOutput="withZero2NA/diff_2013minus2008_eez_zeroData.csv")
+fao_extract(stack=stack_diff_two, fileOutput="withZero2NA/diff_2013minus2008_fao_zeroData.csv")
 
 
 #########################################################
