@@ -61,8 +61,27 @@ clipLayer <- function(layer, file){
 rasters = file.path(dir_halpern2008, 
                     'mnt/storage/marine_threats/impact_layers_2013_redo')
 
+#### SST should have sea ice clipped as well (addition as of Feb 28 2015). This clip raster will include land and sea ice
+sst <- raster("/var/cache/halpern-et-al/mnt/storage/marine_threats/impact_layers_2013_redo/impact_layers/final_impact_layers/threats_2013_interim/new_layers/sst/moll_nontrans_unclipped_1km/sst.tif")
+plot(sst)
+s <- stack(sst, clip_raster)
+overlay(s, fun=function(x,y) x*y,
+        filename="/var/data/ohi/git-annex/Global/NCEAS-Pressures-Summaries_frazier2013/clip_raster_sst_tmp",
+        progress="text", overwrite=TRUE)
 
-##----------------------------------------------------------------------------------------------------
+clip_raster_sst_tmp <- raster("/var/data/ohi/git-annex/Global/NCEAS-Pressures-Summaries_frazier2013/clip_raster_sst_tmp")
+plot(clip_raster_sst_tmp)
+reclassify(clip_raster_sst_tmp, c(-Inf, Inf, 1), 
+           filename="/var/data/ohi/git-annex/Global/NCEAS-Pressures-Summaries_frazier2013/clip_raster_sst",
+           progress="text", overwrite=TRUE)
+
+clip_raster_sst <- raster("/var/data/ohi/git-annex/Global/NCEAS-Pressures-Summaries_frazier2013/clip_raster_sst")
+plot(clip_raster_sst)
+
+### John just provided a plot, I will take a look at that and see if it is about the same (doesn't appear to be in folder):
+tmp <- raster('/var/cache/halpern-et-al/mnt/storage/marine_threats/impact_layers_2013_redo/impact_layers/work/ice_mask/ice_mask')
+
+#----------------------------------------------------------------------------------------------------
 ## 2013 data ----
 ##--------------------------------------------------------------------------------------------------
 # get dir_halpern2008
@@ -127,6 +146,11 @@ clipLayer("slr_combo", saveLocation)
 
 sst_combo <- raster("by_threat/sst_combo.tif")
 clipLayer("sst_combo", saveLocation)
+clip_raster_sst <- raster("/var/data/ohi/git-annex/Global/NCEAS-Pressures-Summaries_frazier2013/clip_raster_sst")
+s <- stack(sst_combo, clip_raster_sst)
+overlay(s, fun=function(x,y) x*y, 
+        filename="/var/data/ohi/git-annex/Global/NCEAS-Pressures-Summaries_frazier2013/TrimmedPressureLayers/Pressures2013_one_year_sst_seaice/sst_ice_mask",
+        progress="text", overwrite=TRUE)
 
 uv_combo <- raster("by_threat/uv_combo.tif")
 clipLayer("uv_combo", saveLocation)
@@ -342,6 +366,13 @@ clipLayer("population_combo_dif", saveLocation)
 
 sst_combo_dif <- raster("by_threat/sst_combo_2013_minus_2008.tif")
 clipLayer("sst_combo_dif", saveLocation)
+
+clip_raster_sst <- raster("/var/data/ohi/git-annex/Global/NCEAS-Pressures-Summaries_frazier2013/clip_raster_sst")
+s <- stack(sst_combo_dif, clip_raster_sst)
+overlay(s, fun=function(x,y) x*y, 
+        filename="/var/data/ohi/git-annex/Global/NCEAS-Pressures-Summaries_frazier2013/TrimmedPressureLayers/Pressures2013minus2008_sst_seaice/sst_combo_dif_sea_ice",
+        progress="text", overwrite=TRUE)
+
 
 uv_combo_dif <- raster("by_threat/uv_combo_2013_minus_2008.tif")
 clipLayer("uv_combo_dif", saveLocation)

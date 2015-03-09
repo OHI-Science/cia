@@ -236,9 +236,14 @@ for(i in 1:length(tifs)){
   stack_2013_one <- stack(stack_2013_one, tmp )
 }
 
+
 ## Add in the cumulative score: 
 stack_2013_one <- stack(stack_2013_one, raster(file.path(rasters, 
                                                          'global_impact_model_2013/normalized_by_one_time_period/averaged_by_num_ecosystems/all_layers/global_cumul_impact_2013_all_layers.tif')))
+
+## Add in SST with sea ice mask:
+stack_2013_one  <- stack(stack_2013_one, 
+        raster("/var/data/ohi/git-annex/Global/NCEAS-Pressures-Summaries_frazier2013/TrimmedPressureLayers/Pressures2013_one_year_sst_seaice/sst_ice_mask"))
 
 ## Summarize by region
 lme_extract(stack=stack_2013_one, fileOutput="oneYearNorm_2013_lme.csv")          
@@ -260,7 +265,13 @@ for(i in 1:length(tifs)){
 }
 names(stack_2013_one) <- sub("_combo.gri", "", tifs)
 
-meow_extract(stack=stack_2013_one, fileOutput="oneYearNorm_2013_meow.csv")
+
+## Add in SST with sea ice mask:
+stack_2013_one  <- stack(stack_2013_one, 
+                         raster("/var/data/ohi/git-annex/Global/NCEAS-Pressures-Summaries_frazier2013/TrimmedPressureLayers/Pressures2013_one_year_sst_seaice/sst_ice_mask"))
+
+
+meow_extract(stack=stack_2013_one, fileOutput="oneYearNorm_2013_meow_zeroData.csv")
 eez_extract(stack=stack_2013_one, fileOutput="withZero2NA/oneYearNorm_2013_eez_zeroData.csv")
 fao_extract(stack=stack_2013_one, fileOutput="withZero2NA/oneYearNorm_2013_fao_zeroData.csv")
 lme_extract(stack=stack_2013_one, fileOutput="withZero2NA/oneYearNorm_2013_lme_zeroData.csv")
@@ -362,6 +373,8 @@ for(i in 1:length(tifs)){
   stack_diff_two <- stack(stack_diff_two, tmp )
 }
 names(stack_diff_two) <- sub("_combo_dif.gri", "", tifs)
+
+sst_ice_clip <- s(stak"/var/data/ohi/git-annex/Global/NCEAS-Pressures-Summaries_frazier2013/TrimmedPressureLayers/Pressures2013minus2008_sst_seaice/sst_combo_dif_sea_ice",
 meow_extract(stack=stack_diff_two, fileOutput="diff_2013minus2008_meow.csv")
 eez_extract(stack=stack_diff_two, fileOutput="withZero2NA/diff_2013minus2008_eez_zeroData.csv")
 lme_extract(stack=stack_diff_two, fileOutput="withZero2NA/diff_2013minus2008_lme_zeroData.csv")

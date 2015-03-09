@@ -5,6 +5,52 @@
 library(raster)
 library(dplyr)
 
+source('../ohiprep/src/R/common.R') 
+# set temporary directory to folder on neptune disk big enough to handle it
+tmpdir='~/big/R_raster_tmp'
+dir.create(tmpdir, showWarnings=F)
+rasterOptions(tmpdir=tmpdir)
+
+rasters = file.path(dir_halpern2008, 
+                    'mnt/storage/marine_threats/impact_layers_2013_redo')
+
+rast_save_ci <- file.path(dir_neptune_data, "git-annex/Global/NCEAS-Pressures-Summaries_frazier2013/SideProjects/BenH_Jan27_2015/Habitat_cumImpact")
+
+cumImp <- raster(file.path(rasters, 
+  "global_impact_model_2013/normalized_by_one_time_period/averaged_by_num_ecosystems/all_layers/global_cumul_impact_2013_all_layers.tif"))
+sst <- raster(file.path(rasters, 
+                        "global_impact_model_2013/normalized_by_one_time_period/averaged_by_num_ecosystems/by_threat/sst_combo.tif"))
+uv <- raster(file.path(rasters, 
+                        "global_impact_model_2013/normalized_by_one_time_period/averaged_by_num_ecosystems/by_threat/uv_combo.tif"))
+acid <- raster(file.path(rasters, 
+                        "global_impact_model_2013/normalized_by_one_time_period/averaged_by_num_ecosystems/by_threat/ocean_acidification_combo.tif"))
+overlay(cumImp, sst, fun=function(x,y){x-y}, 
+        filename=file.path(rast_save_ci, "CumulativeImpact2013_minus_SST.tif"), 
+        progress="text")
+overlay(cumImp, sst, uv, acid, fun=function(w,x,y,z){w-(x+y+z)},
+        filename=file.path(rast_save_ci, "CumulativeImpact2013_minus_SST_UV_acid.tif"),
+        progress="text")
+
+saveLoc <- file.path(dir_halpern2008, "var/www/ebm-site/GlobalMarine2013/SupplementalData")
+dataFiles <- file.path(dir_neptune_data, "git-annex/Global/NCEAS-Pressures-Summaries_frazier2013/SideProjects/BenH_Jan27_2015/FinalData")
+setwd(file.path(dir_neptune_data, "git-annex/Global/NCEAS-Pressures-Summaries_frazier2013/SideProjects/BenH_Jan27_2015/FinalData"))
+
+zip(zipfile= file.path(saveLoc, "ci_no_uv_sst_acid"), 
+    files = grep("ci_no_uv_sst_acid", value=TRUE, dir(dataFiles)))
+
+zip(zipfile= file.path(saveLoc, "ci_no_sst"), 
+    files = grep("ci_no_sst", value=TRUE, dir(dataFiles)))
+
+zip(zipfile= file.path(saveLoc, "ci_2013"), 
+    files = grep("ci_2013", value=TRUE, dir(dataFiles)))
+
+#######################################################
+# This method was aborted because I couldn't replicate the 
+# results for reasons that I could never figure out.
+# But this codes up the methods that would be used to 
+# calculate this.
+#
+#######################################################
 ## Some set up
 source('../ohiprep/src/R/common.R') 
 # set temporary directory to folder on neptune disk big enough to handle it
