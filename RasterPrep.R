@@ -62,31 +62,27 @@ rasters = file.path(dir_halpern2008,
                     'mnt/storage/marine_threats/impact_layers_2013_redo')
 
 #### SST should have sea ice clipped as well (addition as of Feb 28 2015). This clip raster will include land and sea ice
-sst <- raster("/var/cache/halpern-et-al/mnt/storage/marine_threats/impact_layers_2013_redo/impact_layers/final_impact_layers/threats_2013_interim/new_layers/sst/moll_nontrans_unclipped_1km/sst.tif")
-plot(sst)
-s <- stack(sst, clip_raster)
+# Here is the ice mask that John directed me to.  I converted to Mollweide in ArcGIS
+ice_mask <- raster("/var/data/ohi/git-annex/Global/NCEAS-Pressures-Summaries_frazier2013/ice_mask/ice_mask.tif")
+ice_mask_resampled <- resample(ice_mask, clip_raster, method='ngb', 
+                               filename="/var/data/ohi/git-annex/Global/NCEAS-Pressures-Summaries_frazier2013/ice_mask_resampled",
+                               progress="text")
+ice_mask_resampled <- raster("/var/data/ohi/git-annex/Global/NCEAS-Pressures-Summaries_frazier2013/ice_mask_resampled")
+s <- stack(ice_mask_resampled, clip_raster)
 overlay(s, fun=function(x,y) x*y,
-        filename="/var/data/ohi/git-annex/Global/NCEAS-Pressures-Summaries_frazier2013/clip_raster_sst_tmp",
+        filename="/var/data/ohi/git-annex/Global/NCEAS-Pressures-Summaries_frazier2013/clip_raster_sst",
         progress="text", overwrite=TRUE)
-
-clip_raster_sst_tmp <- raster("/var/data/ohi/git-annex/Global/NCEAS-Pressures-Summaries_frazier2013/clip_raster_sst_tmp")
-plot(clip_raster_sst_tmp)
-reclassify(clip_raster_sst_tmp, c(-Inf, Inf, 1), 
-           filename="/var/data/ohi/git-annex/Global/NCEAS-Pressures-Summaries_frazier2013/clip_raster_sst",
-           progress="text", overwrite=TRUE)
 
 clip_raster_sst <- raster("/var/data/ohi/git-annex/Global/NCEAS-Pressures-Summaries_frazier2013/clip_raster_sst")
 plot(clip_raster_sst)
 
-### John just provided a plot, I will take a look at that and see if it is about the same (doesn't appear to be in folder):
-tmp <- raster('/var/cache/halpern-et-al/mnt/storage/marine_threats/impact_layers_2013_redo/impact_layers/work/ice_mask/ice_mask')
 
 #----------------------------------------------------------------------------------------------------
 ## 2013 data ----
 ##--------------------------------------------------------------------------------------------------
 # get dir_halpern2008
 source('~/ohiprep/src/R/common.R')
-setwd(file.path(dir_halpern2008, 
+setwd(file.path('/var/cache/halpern-et-al', 
                 '/mnt/storage/marine_threats/impact_layers_2013_redo',
                 '/global_impact_model_2013/normalized_by_one_time_period/averaged_by_num_ecosystems'))
 
@@ -302,7 +298,7 @@ clipLayer("uv_combo", saveLocation)
 ##--------------------------------------------------------------------------------------------------
 # get dir_halpern2008
 source('~/ohiprep/src/R/common.R')
-setwd(file.path(dir_halpern2008,
+setwd(file.path('/var/cache/halpern-et-al',
                 '/mnt/storage/marine_threats/impact_layers_2013_redo',
                 '/global_impact_difference_2008_2013/normalized_by_two_time_periods/averaged_by_num_ecosystems'))
 

@@ -15,11 +15,10 @@ library(maptools)
 library(rgeos)
 library(plyr)
 
-source('~/ohiprep/src/R/common.R')
 dir_out = '/home/frazier/cia/ZonalExtractionData'
-rasters = file.path(dir_halpern2008, 
+rasters = file.path('/var/cache/halpern-et-al', 
                     'mnt/storage/marine_threats/impact_layers_2013_redo')
-myFiles = file.path(dir_neptune_data, "git-annex/Global/NCEAS-Pressures-Summaries_frazier2013")
+myFiles = file.path("/var/data/ohi/git-annex/Global/NCEAS-Pressures-Summaries_frazier2013")
 
 if (!file.exists(dir_out)) dir.create(dir_out, showWarnings=F) #create the directory output file if it does not exist
 
@@ -314,7 +313,7 @@ names(stack_2013_two) <- sub("_combo.gri", "", tifs)
 meow_extract(stack=stack_2013_two, fileOutput="withZero2NA/twoYearNorm_2013_meow_zeroData.csv")
 eez_extract(stack=stack_2013_two, fileOutput="withZero2NA/twoYearNorm_2013_eez_zeroData.csv")
 lme_extract(stack=stack_2013_two, fileOutput="withZero2NA/twoYearNorm_2013_lme_zeroData.csv")
-
+fao_extract(stack=stack_2103_two, fileOutput="withZero2NA/twoYearNorm_2013_lme_zeroData.csv")
 
 ########################################################
 # 2008/normalized two time periods/averaged by num ecosystems ---- 
@@ -374,11 +373,15 @@ for(i in 1:length(tifs)){
 }
 names(stack_diff_two) <- sub("_combo_dif.gri", "", tifs)
 
-sst_ice_clip <- s(stak"/var/data/ohi/git-annex/Global/NCEAS-Pressures-Summaries_frazier2013/TrimmedPressureLayers/Pressures2013minus2008_sst_seaice/sst_combo_dif_sea_ice",
+## Add in SST with sea ice mask:
+stack_diff_two  <- stack(stack_diff_two, 
+    raster("/var/data/ohi/git-annex/Global/NCEAS-Pressures-Summaries_frazier2013/TrimmedPressureLayers/Pressures2013minus2008_sst_seaice/sst_combo_dif_sea_ice"))
+                  
+                  
 meow_extract(stack=stack_diff_two, fileOutput="diff_2013minus2008_meow.csv")
 eez_extract(stack=stack_diff_two, fileOutput="withZero2NA/diff_2013minus2008_eez_zeroData.csv")
 lme_extract(stack=stack_diff_two, fileOutput="withZero2NA/diff_2013minus2008_lme_zeroData.csv")
-
+fao_extract(stack=stack_diff_two, fileOutput="withZero2NA/diff_2013minus2008_fao_zeroData.csv")
 
 #########################################################
 # Summarize historical 2008 data by EEZ (ben request:7/18/014 ) ----
