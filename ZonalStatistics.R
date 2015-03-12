@@ -59,7 +59,7 @@ plot(global_cumulative_impact_2013_minus_2008)
 #           progress="text")
 
 ## EEZ data:
-#eez <- readOGR(dsn="N:\\model\\GL-NCEAS-OceanRegions_v2013a\\data", layer="eez_mol")
+#eez <- readOGR(dsn="/var/data/ohi/model/GL-NCEAS-OceanRegions_v2013a/data", layer="eez_mol")
 #plot(eez, add=TRUE)
 #rasterize(eez, global_cumulative_impact_2013_minus_2008, 
 #          field="eez_id", 
@@ -67,7 +67,7 @@ plot(global_cumulative_impact_2013_minus_2008)
 #          overwrite=TRUE, 
 #          progress="text")
 # later associated with these data:
-# N:\model\GL-NCEAS-OceanRegions_v2013a\data\eez_details.csv
+#data <- read.csv('/var/data/ohi/model/GL-NCEAS-OceanRegions_v2013a/data/eez_details.csv')
 
 
 ## rgn areas removed and file transformed from gcs (wgs84) to mollweide
@@ -316,8 +316,7 @@ lme_extract(stack=stack_2013_two, fileOutput="withZero2NA/twoYearNorm_2013_lme_z
 fao_extract(stack=stack_2103_two, fileOutput="withZero2NA/twoYearNorm_2013_lme_zeroData.csv")
 
 ########################################################
-# 2008/normalized two time periods/averaged by num ecosystems ---- 
-# NOTE:  This is the most complete data for 2013, but can't be compared to 2008 data
+# 2008 normalized two time periods/averaged by num ecosystems ---- 
 ########################################################
  tifs = list.files(file.path(rasters, 'global_impact_model_2008/normalized_by_two_time_periods/averaged_by_num_ecosystems/by_threat'), pattern=glob2rx('*.tif'))
 
@@ -336,6 +335,19 @@ meow_extract(stack=stack_2008_two, fileOutput="twoYearNorm_2008_meow.csv")
 lme_extract(stack=stack_2008_two, fileOutput="twoYearNorm_2008_lme.csv")          
 eez_extract(stack=stack_2008_two, fileOutput="twoYearNorm_2008_eez.csv")
 fao_extract(stack=stack_2008_two, fileOutput="twoYearNorm_2008_fao.csv")
+
+
+### For land converted from zero to NA
+tifs = list.files(file.path(myFiles, 'TrimmedPressureLayers/Pressures2008'), pattern=glob2rx('*.gri'))
+
+stack_2008_two <- stack()
+for(i in 1:length(tifs)){
+  tmp <- raster(file.path(myFiles, 'TrimmedPressureLayers/Pressures2008', tifs[i]))
+  stack_2008_two <- stack(stack_2008_two, tmp )
+}
+names(stack_2008_two) <- sub("_combo.gri", "", tifs)
+
+meow_extract(stack=stack_2008_two, fileOutput="withZero2NA/twoYearNorm_2008_meow_zeroData.csv")
 
 
 ########################################################

@@ -142,6 +142,7 @@ clipLayer("slr_combo", saveLocation)
 
 sst_combo <- raster("by_threat/sst_combo.tif")
 clipLayer("sst_combo", saveLocation)
+
 clip_raster_sst <- raster("/var/data/ohi/git-annex/Global/NCEAS-Pressures-Summaries_frazier2013/clip_raster_sst")
 s <- stack(sst_combo, clip_raster_sst)
 overlay(s, fun=function(x,y) x*y, 
@@ -156,8 +157,8 @@ clipLayer("global_cumulative_impact_2013_all_layers", saveLocation)
 
 #########################################
 ###  2013 two years standardized ----
-dir_2013_2 <- file.path(dir_halpern2008, 
-                '/mnt/storage/marine_threats/impact_layers_2013_redo',
+dir_2013_2 <- file.path('/var/cache/halpern-et-al', 
+                'mnt/storage/marine_threats/impact_layers_2013_redo',
                 'global_impact_model_2013/normalized_by_two_time_periods/averaged_by_num_ecosystems')
 
 saveLocation <- "/var/data/ohi/git-annex/Global/NCEAS-Pressures-Summaries_frazier2013/TrimmedPressureLayers/Pressures2013_two_years/"
@@ -206,6 +207,14 @@ clipLayer("population_combo", saveLocation)
 sst_combo <- raster(file.path(dir_2013_2, "by_threat/sst_combo.tif"))
 clipLayer("sst_combo", saveLocation)
 
+clip_raster_sst <- raster("/var/data/ohi/git-annex/Global/NCEAS-Pressures-Summaries_frazier2013/clip_raster_sst")
+s <- stack(sst_combo, clip_raster_sst)
+overlay(s, fun=function(x,y) x*y, 
+        filename="/var/data/ohi/git-annex/Global/NCEAS-Pressures-Summaries_frazier2013/TrimmedPressureLayers/Pressures2013_two_year_sst_seaice/sst_ice_mask",
+        progress="text", overwrite=TRUE)
+
+
+
 uv_combo <- raster(file.path(dir_2013_2, "by_threat/uv_combo.tif"))
 clipLayer("uv_combo", saveLocation)
 
@@ -227,15 +236,11 @@ clipLayer("cumulative_impacts", saveLocation)
 ## 2008 data ----
 ##--------------------------------------------------------------------------------------------------
 # get dir_halpern2008
-source('~/ohiprep/src/R/common.R')
-setwd(file.path(dir_halpern2008, 
-                '/mnt/storage/marine_threats/impact_layers_2013_redo',
-                '/global_impact_model_2008/normalized_by_two_time_periods/averaged_by_num_ecosystems'))
 
 saveLocation <- "/var/data/ohi/git-annex/Global/NCEAS-Pressures-Summaries_frazier2013/TrimmedPressureLayers/Pressures2008/"
 
 # load and check pressures layers
-global_cumulative_impact_2008_all_layers <- raster(file.path(dir_halpern2008, 
+global_cumulative_impact_2008_all_layers <- raster(file.path('/var/cache/halpern-et-al', 
           '/mnt/storage/marine_threats/impact_layers_2013_redo',
 'global_impact_model_2008/normalized_by_two_time_periods/averaged_by_num_ecosystems/all_layers_except_shipping_oceanpollution_invasives/cumulative/global_cumul_impact_2008_all_layers_except_shipping_oceanpollution_invasives.tif'))
 
@@ -243,7 +248,7 @@ clipLayer("global_cumulative_impact_2008_all_layers", saveLocation)
 
 
 ## get the other layers:
-dir_2008 <- file.path(dir_halpern2008, 
+dir_2008 <- file.path('/var/cache/halpern-et-al', 
                 'mnt/storage/marine_threats/impact_layers_2013_redo',
                 'global_impact_model_2008/normalized_by_two_time_periods/averaged_by_num_ecosystems/by_threat')
 
@@ -289,6 +294,13 @@ clipLayer("population_combo", saveLocation)
 
 sst_combo <- raster(file.path(dir_2008, "sst_combo.tif"))
 clipLayer("sst_combo", saveLocation)
+# sst with ice mask: 
+clip_raster_sst <- raster("/var/data/ohi/git-annex/Global/NCEAS-Pressures-Summaries_frazier2013/clip_raster_sst")
+s <- stack(sst_combo, clip_raster_sst)
+overlay(s, fun=function(x,y) x*y, 
+        filename="/var/data/ohi/git-annex/Global/NCEAS-Pressures-Summaries_frazier2013/TrimmedPressureLayers/Pressures2008_two_year_sst_seaice/sst_ice_mask",
+        progress="text", overwrite=TRUE)
+
 
 uv_combo <- raster(file.path(dir_2008, "uv_combo.tif"))
 clipLayer("uv_combo", saveLocation)
@@ -413,18 +425,11 @@ for(i in 1:length(tifs)){
 }
 
 # for cumulative impacts:
-tifs = list.files(file.path(rasters, 
-                            'global_impact_difference_2008_2013/normalized_by_two_time_periods/averaged_by_num_ecosystems/by_threat'), pattern=glob2rx('*.tif'))
-
-## Get rid of zeroes
-
   rast <- raster(file.path(rasters, 
                            'global_impact_difference_2008_2013/normalized_by_two_time_periods/averaged_by_num_ecosystems/cumulative/global_cumul_impact_2013_minus_2008.tif'))
   reclassify(rast, cbind(0, NA), progress="text", 
              filename = file.path(path, sprintf("ModifiedPressureMaps/Zero_cut/Difference2013minus2008/global_cumul_impact_2013_minus_2008")),
              overwrite=TRUE)
-
-
 
 
 
