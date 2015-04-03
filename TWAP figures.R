@@ -61,8 +61,9 @@ col.brks=c(0, 2.95, 3.50, 3.86, 4.31, 10)
 colors <- c('#92CDDC70', '#92D05070', '#FFFF0070', '#FFC00070', '#FF000070')
 
 # function 
-plotCHI <- function(fig=file.path(path_save, "CHI_LME_wgs_mer_neg150.png"), shapeFile=lme, var=lme@data$global_cumul_impact_2013_all_layers){
-  png(file=fig, width=1200, height=800, res=150, pointsize=18, type='cairo')
+plotCHI <- function(fig=file.path(path_save, "CHI_LME_wgs_mer_neg150.pdf"), shapeFile=lme, var=lme@data$global_cumul_impact_2013_all_layers){
+#  png(file=fig, width=1200, height=800, res=150, pointsize=18, type='cairo')
+  pdf(file=fig, width=11, height=8.5, pointsize=18)
  par(oma=c(0,0,0,0),
       mar=c(1.5,1,0,1))
   plot(ocean, col='gray90', border=NA)
