@@ -44,6 +44,10 @@ zip(zipfile= file.path(saveLoc, "ci_no_sst"),
 zip(zipfile= file.path(saveLoc, "ci_2013"), 
     files = grep("ci_2013", value=TRUE, dir(dataFiles)))
 
+
+
+
+
 #######################################################
 # This method was aborted because I couldn't replicate the 
 # results for reasons that I could never figure out.
