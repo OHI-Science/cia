@@ -3,7 +3,6 @@
 ### R script to map cumulative pressures
 ### Melanie Frazier Dec 3, 2013
 #######################################################################
-
 rm(list = ls())
 
 ## Downloading packages
@@ -17,7 +16,7 @@ library(tidyr)
 library(rasterVis)
 library(RColorBrewer)
 library(fields)
-#library(ggplot2)
+#library(ggplot2) #don't load this unless it is needed for a particular plot (messes things up)
 #library(grid) #needed for myTheme function
 #library(spatial.tools)
 #library(classInt)
@@ -50,11 +49,15 @@ rasters = file.path(dir_halpern2008,
 rgn_ocn_cntry <- readOGR("/var/data/ohi/model/GL-NCEAS-OceanRegions_v2013a/data", layer="rgn_ocean_cntry_mol")
 land <- rgn_ocn_cntry[!is.na(rgn_ocn_cntry@data$ISO_3digit) & rgn_ocn_cntry@data$rgn_id==0,]
 
+# ice data
+ice_max <- readOGR(file.path(path, 'sea_ice_Liz_Apr_6_2015/ice'), layer='NewMaxIce')
+ice_min <- readOGR(file.path(path, 'sea_ice_Liz_Apr_6_2015/ice'), layer='minIce_mol')
+
 legend.shrink <- 0.4
 legend.width <- 0.6
 
 # raster functions ----
-raster_defaultLegend <- function(raster_data, saveLoc, title_legend=NA, title_plot=NA, cols){
+raster_defaultLegend <- function(raster_data, saveLoc, title_legend=NA, title_plot=NA, cols, ice_over=TRUE){
 #   par(mar=c(2,2,2,2))
 #   par(oma=c(0,0,0,4))
   png(file.path(path_save, saveLoc), res=500, width=7, height=7, units="in")  
@@ -63,30 +66,44 @@ raster_defaultLegend <- function(raster_data, saveLoc, title_legend=NA, title_pl
        axis.args=list(cex.axis=.8), 
        legend.args=list(text=title_legend, font=2, line=1, cex=1))
   title(main=title_plot, line=-5)
-  plot(land, add=TRUE, border="gray80", col="gray90", lwd=0.5)
+   if(ice_over){
+    plot(ice_max, add=TRUE, border=NA, col="#00000033")
+    plot(ice_min, add=TRUE, border="gray80", col="white")
+    plot(ice_min, add=TRUE, border=NA, col="white")
+  }
+plot(land, add=TRUE, border="gray80", col="gray90", lwd=0.5)  
   dev.off()
 }
 
-raster_breaks <- function(raster_data, saveLoc, title, title_legend=NULL, myBreaks, cols){
+raster_breaks <- function(raster_data, saveLoc, title, title_legend=NULL, myBreaks, cols, ice_over=TRUE){
 #   par(mar=c(2,2,2,2))
 #   par(oma=c(0,0,0,4))
 png(file.path(path_save, saveLoc), res=500, width=7, height=7, units="in")
 plot(raster_data, col=cols, axes=FALSE, box=FALSE, breaks=myBreaks, legend=FALSE)
 # add axis with fields package function:
-def_breaks <- seq(min(myBreaks), max(myBreaks), length.out=length(myBreaks))
-image.plot(raster_data, zlim = c(min(myBreaks), max(myBreaks)), 
+def_breaks <- seq(0, length(myBreaks), length.out=length(myBreaks))
+image.plot(raster_data, #zlim = c(min(myBreaks), max(myBreaks)), 
            legend.only = TRUE, 
            legend.shrink=legend.shrink,
            legend.width=legend.width,
            col = cols,
            legend.lab=title_legend,
-           axis.args = list(at = def_breaks, labels = round(myBreaks, 1), cex.axis=.8))
+           breaks=def_breaks,
+           lab.breaks=round(myBreaks, 1),
+           axis.args = list(cex.axis = 0.8))
+
+if(ice_over){
+plot(ice_max, add=TRUE, border=NA, col="#00000059") #35% transparent
+plot(ice_min, add=TRUE, border="gray80", col="white")
+plot(ice_min, add=TRUE, border=NA, col="white")
+}
 plot(land, add=TRUE, border="gray80", col="gray90", lwd=0.5)
+
 dev.off()
 }
 
 
-difPlots <- function(rast_data, my_breaks, file_name, legend=TRUE, extent=FALSE, title=NA){
+difPlots <- function(rast_data, my_breaks, file_name, legend=TRUE, extent=FALSE, title=NA, ice_over=TRUE){
   #pdf(file.path(path_save, 'Fig2a.SST_diff.pdf'))  #, width=1200, height=1000, res=150, pointsize=14)
   png(file.path(path_save, file_name), res=500, width=7, height=7, units="in")
   cols_low = colorRampPalette(c("#5E4FA2", "#3288BD", "#66C2A5", "#ABDDA4", "#E6F598", "#FFFFBF"))((length(my_breaks)-1)/2)
@@ -96,19 +113,24 @@ difPlots <- function(rast_data, my_breaks, file_name, legend=TRUE, extent=FALSE,
   if(!is.na(title)){title(main=title, line=-5)}
     
   if(legend){
-  # add axis with fields package function:
-  which(my_breaks==0)
-  def_breaks <- c(my_breaks[1:which(my_breaks==0)], 0, my_breaks[(which(my_breaks==0)+1):length(my_breaks)])
-  locs <- seq(min(def_breaks), max(def_breaks), length=length(def_breaks))
-  locs[c(length(locs)/2, (length(locs)/2)+1)] <- 0 
+     def_breaks <- c(my_breaks[my_breaks<0], NA, 0, NA, my_breaks[my_breaks>0])
+     locs <- seq(1, length(def_breaks))
+    
+    image.plot(rast_data, zlim = c(min(my_breaks), max(my_breaks)), 
+               legend.only = TRUE, 
+               legend.shrink=0.4,
+               legend.width=0.6,
+               col = c(cols_low, "#FFFFFF", "#FFFFFF", cols_high),
+             breaks = locs,
+             lab.breaks = round(def_breaks, 2),
+               axis.args = list(cex.axis=0.8))
+  }
   
-  image.plot(rast_data, zlim = c(min(my_breaks), max(my_breaks)), 
-             legend.only = TRUE, 
-             legend.shrink=0.3,
-             legend.width=0.6,
-             col = c(cols_low, "#FFFFFF", cols_high),
-             axis.args = list(at = locs, 
-                              labels = round(def_breaks, 2), cex.axis=0.8))}
+  if(ice_over){
+    plot(ice_min, add=TRUE, border="gray80", col="white")
+    plot(ice_min, add=TRUE, border=NA, col="white")
+    plot(ice_max, add=TRUE, border=NA, col="#00000033") #35% transparent
+  }
   
   plot(land, add=TRUE, border="gray80", col="gray90", lwd=0.5)
   
@@ -344,13 +366,17 @@ arg <- list(at=c(-2,-1,0,1,2),
             labels=c("low/\n decreasing", "low/\n increasing", "neither", "high/\n decreasing", "high/\n increasing"), 
             cex.axis=0.8)
 
-color <- c("#8BB4EC", "#B2D698", "#F7EE3B0D", "#E77D27", "#991219") # trying rainbow color scheme
+color <- c("#8BB4EC", "#B2D698", "#FFCC001A", "#E77D27", "#991219") # trying rainbow color scheme
+#color <- c("#8BB4EC", "#B2D698", "#F7EE3B0D", "#E77D27", "#991219") # last color scheme
 #color <- c("#023FA5", "#BEC1D4", "#D1D1D10D", "#D6BCC0", "#8E063B") #red/blue color scheme
 
 plot(DiffHighLowScore, col=color, axis.arg=arg, axes=FALSE, box=FALSE, legend.shrink=0.3,
      legend.width=0.6,
      legend.args=list(text="score/trend", font=2, line=1, cex=1))
-plot(land, add=TRUE, border="gray60", col="gray90", lwd=0.4)
+plot(ice_max, add=TRUE, border=NA, col="#00000033")
+plot(ice_min, add=TRUE, border="gray80", col="white")
+plot(ice_min, add=TRUE, border=NA, col="white")
+plot(land, add=TRUE, border="gray80", col="gray90", lwd=0.5)
 dev.off()
 
 
@@ -510,6 +536,8 @@ Cum2013 <- raster(file.path(path_trim, "Pressures2013/global_cumulative_impact_2
 my_breaks <- c(0, 1.781894, 2.377814, 2.986494, 3.316144, 3.558642, 3.750878, 
                3.923132, 4.127960, 4.384074, 4.571275, 16)
 cols = rev(colorRampPalette(brewer.pal(11, 'Spectral'))(length(my_breaks)+2))[2:12] #stripping extreme ends of the color spectrum
+#cols <- c("#00000026", "white", cols)
+
 #cols = rev(brewer.pal(11, 'Spectral')) #full spectrum
 
 raster_breaks(raster_data=Cum2013, saveLoc="Fig3.CumImp2013.png", myBreaks=my_breaks, cols=cols)
@@ -538,7 +566,7 @@ sst_zeroCut <- raster(file.path(path, "ModifiedPressureMaps/Zero_cut/Difference2
 # col = c(low_cols, '#FFFFFF', high_cols),
 
 my_breaks <- c(-2.6,-2, -1.5, -1, -0.5, 0, 0.5, 1, 1.5, 2, 2.6) # for plot
-difPlots(sst_zeroCut, my_breaks=my_breaks, file_name="Fig4a.SST_diff.png")
+difPlots(sst_zeroCut, my_breaks=my_breaks, file_name="Fig4a.SST_diff.png", ice_over=FALSE)
 
 
 #c:  demersal destructive fishing
@@ -551,8 +579,8 @@ dem_fishing_zerocut <- raster(file.path(path, "ModifiedPressureMaps/Zero_cut/Dif
 # my_breaks <- c(-0.200318, -0.1358308, -0.09420618, -0.0626831, -0.03774771, -0.01757202, 0,
 #                0.01724225, 0.05912814) #natural jenks
 
-my_breaks <- c(-0.7, -0.2, -0.15, -0.10, -0.05, 0, 0.05, 0.10, 0.15, 0.2, 0.7)
-difPlots(dem_fishing_zerocut, my_breaks=my_breaks, file_name="Fig4c.dem_diff.png")
+my_breaks <- c(-0.63, -0.2, -0.15, -0.10, -0.05, 0, 0.05, 0.10, 0.15, 0.2, 0.44)
+difPlots(dem_fishing_zerocut, my_breaks=my_breaks, file_name="Fig4c.dem_diff.png", ice_over=FALSE)
 
 
 #d:  pelagic fishing
@@ -560,13 +588,13 @@ pel_fishing_diff <- raster(file.path(path, "ModifiedPressureMaps/Zero_cut/Differ
 # histogram(pel_fishing_diff, main="pelagic high-bycatch: 2013 minus 2008")
 # plot(pel_fishing_diff)
 
-my_breaks <- c(-0.53, -0.2, -0.10, -0.075, -0.05, -0.025, 0, 0.025, 0.05, 0.075, 0.10, 0.2, 0.53)
-difPlots(pel_fishing_diff, my_breaks=my_breaks, file_name="Fig4d.pel_diff.png")
+my_breaks <- c(-0.52, -0.2, -0.10, -0.075, -0.05, -0.025, 0, 0.025, 0.05, 0.075, 0.10, 0.2, 0.31)
+difPlots(pel_fishing_diff, my_breaks=my_breaks, file_name="Fig4d.pel_diff.png", ice_over=FALSE)
 
 
 #b:  nutrient_diff
 nutrient_zeroCut <- raster(file.path(path, "ModifiedPressureMaps/Zero_cut/Difference2013minus2008/plumes_fert_combo_2013_minus_2008.tif"))
-my_breaks <- c(-0.69 , -0.10, -0.08, -0.06, -0.04, -0.02, 0,
+my_breaks <- c(-0.45 , -0.10, -0.08, -0.06, -0.04, -0.02, 0,
                0.02, 0.04, 0.06, 0.08, 0.1, 0.69)
 difPlots(nutrient_zeroCut, my_breaks=my_breaks, file_name="Fig4b.nutrients_global.png", extent=TRUE)
 
@@ -964,7 +992,12 @@ png(file.path(path_save, "Pressures2013_raw_2013_OneYear/SumRawPressures_na_rm_c
       labels=seq(minValue(total), maxValue(total), 2))
        )
   title(main="Total stressor intensity", line=-5)
-  plot(land, add=TRUE, border="gray80", col="gray90", lwd=0.5)
+
+plot(ice_max, add=TRUE, border=NA, col="#0000004D") #30% transparent
+plot(ice_min, add=TRUE, border="gray80", col="white")
+plot(ice_min, add=TRUE, border=NA, col="white")
+
+plot(land, add=TRUE, border="gray80", col="gray90", lwd=0.5)
 plot(extent(fl_extent), col="red", add=TRUE)
 plot(extent(uk_extent), col="red", add=TRUE)
 plot(extent(cn_extent), col="red", add=TRUE)
@@ -1191,12 +1224,27 @@ freq(tmp, value=0, useNA="no", progress="text")  #2388249
 freq(tmp, value=1, useNA="no", progress="text")  #7212563
 
 png(file.path(path_save, "SumNonZeroPressures.png"), res=500, width=7, height=7, units="in")  
-cols = colorRampPalette(brewer.pal(11, 'Spectral'))(255)
-plot(tmp, col=rev(cols), axes=FALSE, box=FALSE, legend.shrink=0.5, legend.width=0.6, 
-     axis.args=list(cex.axis=1.3))
+cols = colorRampPalette(brewer.pal(11, 'Spectral'))(250)
+plot(tmp, col=rev(cols), axes=FALSE, box=FALSE, legend.shrink=0.4, legend.width=0.6, 
+     breaks=seq(minValue(tmp), maxValue(tmp), length.out=250),
+     axis.args=list(cex.axis=1.2,
+                    at=seq(minValue(tmp), maxValue(tmp), 2),
+                    labels=seq(minValue(tmp), maxValue(tmp), 2))
+)
 title(main="Sum of non-zero cells", line=-5)
+
+plot(ice_max, add=TRUE, border=NA, col="#0000004D") #30% transparent
+plot(ice_min, add=TRUE, border="gray80", col="white")
+plot(ice_min, add=TRUE, border=NA, col="white")
+
 plot(land, add=TRUE, border="gray80", col="gray90", lwd=0.5)
+plot(extent(fl_extent), col="red", add=TRUE)
+plot(extent(uk_extent), col="red", add=TRUE)
+plot(extent(cn_extent), col="red", add=TRUE)
+plot(extent(med_extent), col="red", add=TRUE)
 dev.off()
+
+
 
 ###################################
 # S9: no longer doing
@@ -1208,44 +1256,44 @@ dev.off()
 ####################################
 
 dem_fishing_zerocut <- raster(file.path(path, "ModifiedPressureMaps/Zero_cut/Difference2013minus2008/demersal_destructive_fishing_combo_2013_minus_2008.tif"))
-my_breaks <- c(-0.7, -0.2, -0.15, -0.10, -0.05, 0, 0.05, 0.10, 0.15, 0.2, 0.7)
+my_breaks <- c(-0.64, -0.2, -0.15, -0.10, -0.05, 0, 0.05, 0.10, 0.15, 0.2, 0.44)
 difPlots(dem_fishing_zerocut, my_breaks=my_breaks, 
          file_name=sprintf("Pressures2013minus2008/%s.png", names(dem_fishing_zerocut)), 
-         title="Demersal destructive fishing")
+         title="Demersal destructive fishing", ice_over=FALSE)
 
 dem_nd_high <- raster(file.path(path, "ModifiedPressureMaps/Zero_cut/Difference2013minus2008/demersal_nondest_high_bycatch_combo_2013_minus_2008.tif"))
 #hist(dem_nd_high)
-my_breaks <- c(-0.6, -0.2, -0.15, -0.10, -0.05, 0, 0.05, 0.10, 0.15, 0.2, 0.6)
+my_breaks <- c(-0.59, -0.2, -0.15, -0.10, -0.05, 0, 0.05, 0.10, 0.15, 0.2, 0.54)
 difPlots(dem_nd_high, my_breaks=my_breaks, 
          file_name=sprintf("Pressures2013minus2008/%s.png", names(dem_nd_high)), 
-         title="Demersal nondestructive high bycatch fishing")
+         title="Demersal nondestructive high bycatch fishing", ice_over=FALSE)
 
 dem_nd_low <- raster(file.path(path, "ModifiedPressureMaps/Zero_cut/Difference2013minus2008/demersal_nondest_low_bycatch_combo_2013_minus_2008.tif"))
 #hist(dem_nd_low)
 my_breaks <- c(-0.27, -0.10, -0.075, -0.05, -0.025, 0, 0.025, 0.05, 0.075, 0.10, 0.22)
 difPlots(dem_nd_low, my_breaks=my_breaks, 
          file_name=sprintf("Pressures2013minus2008/%s.png", names(dem_nd_low)), 
-         title="Demersal nondestructive low bycatch fishing")
+         title="Demersal nondestructive low bycatch fishing", ice_over=FALSE)
 
 pel_fishing_diff <- raster(file.path(path, "ModifiedPressureMaps/Zero_cut/Difference2013minus2008/pelagic_high_bycatch_combo_2013_minus_2008.tif"))
-my_breaks <- c(-0.53, -0.2, -0.10, -0.075, -0.05, -0.025, 0, 0.025, 0.05, 0.075, 0.10, 0.2, 0.53)
+my_breaks <- c(-0.53, -0.2, -0.10, -0.075, -0.05, -0.025, 0, 0.025, 0.05, 0.075, 0.10, 0.2, 0.31)
 difPlots(pel_fishing_diff, my_breaks=my_breaks, 
          file_name=sprintf("Pressures2013minus2008/%s.png", names(pel_fishing_diff)), 
-         title="Pelagic high bycatch fishing")
+         title="Pelagic high bycatch fishing", ice_over=FALSE)
 
 pel_fishing_low <- raster(file.path(path, "ModifiedPressureMaps/Zero_cut/Difference2013minus2008/pelagic_low_bycatch_combo_2013_minus_2008.tif"))
 #hist(pel_fishing_low)
 my_breaks <- c(-0.60, -0.2, -0.10, -0.075, -0.05, -0.025, 0, 0.025, 0.05, 0.075, 0.10, 0.2, 0.22)
 difPlots(pel_fishing_low, my_breaks=my_breaks, 
          file_name=sprintf("Pressures2013minus2008/%s.png", names(pel_fishing_low)), 
-         title="Pelagic low bycatch fishing")
+         title="Pelagic low bycatch fishing", ice_over=FALSE)
 
 
 sst_zeroCut <- raster(file.path(path, "ModifiedPressureMaps/Zero_cut/Difference2013minus2008/sst_combo_2013_minus_2008.tif"))
 my_breaks <- c(-2.6,-2, -1.5, -1, -0.5, 0, 0.5, 1, 1.5, 2, 2.6) # for plot
 difPlots(sst_zeroCut, my_breaks=my_breaks, 
          file_name=sprintf("Pressures2013minus2008/%s.png", names(sst_zeroCut)), 
-         title="Sea surface temperature")
+         title="Sea surface temperature", ice_over=FALSE)
 
 
 uv_zeroCut <- raster(file.path(path, "ModifiedPressureMaps/Zero_cut/Difference2013minus2008/uv_combo_2013_minus_2008.tif"))
@@ -1253,7 +1301,7 @@ uv_zeroCut <- raster(file.path(path, "ModifiedPressureMaps/Zero_cut/Difference20
 my_breaks <- c(-1.2, -0.3 ,-0.2, -0.1, -0.05, 0, 0.05, 0.1, 0.2, 0.3, 1.2) # for plot
 difPlots(uv_zeroCut, my_breaks=my_breaks, 
          file_name=sprintf("Pressures2013minus2008/%s.png", names(uv_zeroCut)), 
-         title="UV")
+         title="UV", ice_over=FALSE)
 
 
 
@@ -1285,20 +1333,19 @@ Diff_plots(nightLights, my_breaks, "Light pollution")
 
 ## nutrient_diff
 nutrient_zeroCut <- raster(file.path(path, "ModifiedPressureMaps/Zero_cut/Difference2013minus2008/plumes_fert_combo_2013_minus_2008.tif"))
-my_breaks <- c(-0.69 , -0.10, -0.08, -0.06, -0.04, -0.02, 0,
-               0.02, 0.04, 0.06, 0.08, 0.1, 0.69)
+my_breaks <- c(-0.46 , -0.10, -0.08, -0.06, -0.04, -0.02, 0, 0.02, 0.04, 0.06, 0.08, 0.1, 0.70)
 Diff_plots(nutrient_zeroCut, my_breaks, "Nutrient pollution")
 
 ## organic differences
 organic_zeroCut <- raster(file.path(path, "ModifiedPressureMaps/Zero_cut/Difference2013minus2008/plumes_pest_combo_2013_minus_2008.tif"))
 histogram(organic_zeroCut)
-my_breaks <- c( -0.27, -0.1, -0.0.75, -0.05, -0.025, 0, 0.025, 0.05, 0.075, 0.1, 0.34)
+my_breaks <- c( -0.27, -0.1, -0.075, -0.05, -0.025, 0, 0.025, 0.05, 0.075, 0.1, 0.35)
 Diff_plots(organic_zeroCut, my_breaks, "Organic pollution")
 
 ## oil rigs
 oil_rigs <- raster(file.path(path, "ModifiedPressureMaps/Zero_cut/Difference2013minus2008/oil_rigs_combo_2013_minus_2008.tif"))
 histogram(oil_rigs)
-my_breaks <- c(-2, -1.5, -1.0, -0.5, 0, 0.5, 1.0, 1.5, 2)
+my_breaks <- c(-1.8, -1.5, -1.0, -0.5, 0, 0.5, 1.0, 1.5, 1.8)
 Diff_plots(oil_rigs, my_breaks, "Oil rigs")
 
 ## population
