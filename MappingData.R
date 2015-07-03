@@ -860,6 +860,20 @@ ggsave(file.path(path_save, 'Impacts4EEZs_p2.pdf'), height=20, width=10)
 p %+% subset(eez_2013, region_id %in% batch3)
 ggsave(file.path(path_save, 'Impacts4EEZs_p3.pdf'), height=20, width=10)
 
+### plot for website
+p <- ggplot(eez_2013, aes(x=factor(region_id, levels=(region_id)[order(global_cumulative_impact_2013_all_layers.gri)]), y=value, fill=pressure, order=desc(pressure))) +
+  geom_bar(stat="identity") +
+  scale_fill_manual(values=myPalette(19)) +
+  coord_flip() +
+  theme_bw() +
+  labs(y="Pressure", x="") + 
+  ylim(0, 9) + 
+  guides(fill=guide_legend(reverse=TRUE)) +
+  theme(axis.text.y=element_text(size=4),
+        legend.justification=c(1,0), legend.position=c(1,0), legend.key.size = unit(0.5, "cm"), legend.text=element_text(size=6))
+p
+ggsave(file.path(path_save, 'Impacts4EEZs_website2.png'), height=15, width=5)
+
 ##############################################
 ## SOM Fig. 5: individual pressures----
 # 2013/normalized one time period/averaged by num ecosystems ---- 
