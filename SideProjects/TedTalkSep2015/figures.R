@@ -82,14 +82,16 @@ ohi <- read.csv('../ohi-global/global2015/radical_2015-09-11.csv') %>%
   filter(dimension == "score") %>%
   filter(region_id != 0) %>%
   filter(region_id < 255) %>%
-  filter(goal == "Index")
+  filter(goal == "Index") %>%
+  mutate(scenario = paste0('OHI_', scenario))
 
 ohi <- spread(ohi, scenario, value) 
 
-ohi$ohi_change <- ohi$'2015' - ohi$'2012' 
-names(ohi)[which(names(ohi)=='2015')] <- 'ohi_2015'
+ohi$ohi_change <- ohi$'OHI_2015' - ohi$'OHI_2012' 
 
-ohi <- select(ohi, rgn_id_2013=region_id, ohi_2015, ohi_change)
+ohi <- ohi %>%
+  select(-goal, -dimension) %>%
+  rename(rgn_id_2013 = region_id)
 
 ## coastal population and trend
 ## add in data for uninhabitated islands:
@@ -121,9 +123,9 @@ data <- chi %>%
   left_join(coastal_pop_trend) %>%
   mutate(lnPop=log(popsum + 1)) %>%
   mutate(labels1 = (ifelse(global_cumul_impact_2013_all_layers>6 | 
-                             ohi_2015 > 85 | 
+                             OHI_2015 > 85 | 
                              global_cumul_impact_2013_all_layers<2 |
-                             ohi_2015 < 50, eez_nam, NA))) %>%
+                             OHI_2015 < 50, eez_nam, NA))) %>%
 mutate(labels2 = (ifelse(ohi_change > 5 | 
                            ohi_change < -5 | 
                            global_cumul_impact_2013_minus_2008 < -0.5 |
@@ -131,7 +133,22 @@ mutate(labels2 = (ifelse(ohi_change > 5 |
 head(data.frame(data))
 data <- data.frame(data)
 
-p <- ggplot(data, aes(y=global_cumul_impact_2013_all_layers, x=ohi_2015, size=lnPop)) +
+library(googleVis)
+gV_data <- data %>%
+  select(-rgn_id_2013, -labels1, -labels2) %>%
+  rename(CHI_2013=global_cumul_impact_2013_all_layers, CHI_change=global_cumul_impact_2013_minus_2008) %>%
+  mutate(time = 2015)
+
+Motion=gvisMotionChart(gV_data, 
+                       idvar="eez_nam", 
+                       timevar="time")
+plot(Motion)
+
+print(Motion, file='SideProjects/TedTalkSep2015/GoogleVisScores.html')
+
+
+
+p <- ggplot(data, aes(y=global_cumul_impact_2013_all_layers, x=OHI_2015, size=lnPop)) +
      geom_point(aes(fill=pop_trend), shape=21, color="black", alpha=0.8) +
   stat_smooth(method=lm, show_guide = FALSE)  +
    #geom_text(aes(label=as.character(labels1)), size=4, hjust=1) +
@@ -184,6 +201,76 @@ ggplot(data, aes(y=global_cumul_impact_2013_minus_2008, x=ohi_change)) +
 
 mod <- lm(global_cumul_impact_2013_minus_2008 ~ ohi_change, data=data) 
 summary(mod)
+
+
+### some data requests from Ben:
+require(gdata)
+
+goals <- c('Index', 'AO', 'SPP', 'BD', 'HAB', 'CP', 'CS', 'CW', 'ECO', 'LE', 'LIV', 'FIS', 'FP', 'MAR', 'ICO', 'SP', 'LSP', 'NP', 'TR')
+
+
+## summary of index/goal scores
+ohi2 <- read.csv('../ohi-global/global2015/radical_2015-09-11.csv') %>%
+  filter(dimension == "score") %>%
+  filter(region_id == 300)
+
+ohi2 <- spread(ohi2, scenario, value) 
+
+ohi2$goal <- reorder.factor(ohi2$goal, new.order=goals)
+
+ohi2 <- ohi2 %>%
+  arrange(goal) %>%
+  select(-dimension, -region_id)
+
+write.csv(ohi2, 'SideProjects/TedTalkSep2015/IndexSummary.csv', row.names=FALSE)
+
+## Target country explore:
+
+regions <- chi %>%
+  select(region_id=rgn_id_2013, eez_nam)
+
+ohi3 <- read.csv('../ohi-global/global2015/radical_2015-09-11.csv') %>%
+  filter(dimension == "score") %>%
+  filter(region_id != 0) %>%
+  filter(region_id < 255) %>%
+  left_join(regions) %>%
+  select(dimension, scenario, goal, eez_nam, region_id, value) 
+
+ohi_v1 <-  ohi3 %>%
+  filter(eez_nam %in% c("Peru", "Northern Saint-Martin", "Mozambique", "Republique du Congo", "United Kingdom"))
+write.csv(ohi_v1, 'SideProjects/TedTalkSep2015/OHIscores_v1.csv', row.names=FALSE)
+
+
+## get expanded version
+tmp <- expand.grid(scenario=2012:2015, goals=goals)
+
+scenario_goal <- paste(tmp$scenario, tmp$goals, sep="_")
+
+ohi4 <- ohi3 %>%
+  mutate(year_goal = paste(scenario, goal, sep="_")) %>%
+  select(region_id, eez_nam, year_goal, value) 
+  
+  ohi4$year_goal <- reorder.factor(ohi4$year_goal, new.order=scenario_goal)  
+  
+ohi4 <- spread(ohi4, year_goal, value) %>%
+  filter(eez_nam %in% c("Peru", "Northern Saint-Martin", "Mozambique", "Republique du Congo", "United Kingdom"))
+
+write.csv(ohi4, 'SideProjects/TedTalkSep2015/OHIscores_v2.csv', row.names=FALSE)
+
+### NOTE: in these cases, I don't need to worry about summarizing by eez (there are some, such as US, that have multiple EEZs)
+## get changes in CHI:
+chi_diffs <- chi_change <- read.csv("ZonalExtractionData/withZero2NA/diff_2013minus2008_eez_zeroData.csv", stringsAsFactors=FALSE) %>%
+  filter(eez_nam %in% c("Peru", "Northern Saint-Martin", "Mozambique", "R\x8epublique du Congo", "United Kingdom")) %>%
+  select(-eez_id, -eez_key, -sov_id, -sov_nam, -eez_iso3, -sst) %>%
+  rename(sst=layer)
+write.csv(chi_diffs, 'SideProjects/TedTalkSep2015/CHIscores.csv', row.names=FALSE)
+
+## get CHI 2013 scores:
+chi_2013 <- chi_change <- read.csv("ZonalExtractionData/withZero2NA/oneYearNorm_2013_eez_zeroData.csv", stringsAsFactors=FALSE) %>%
+  filter(eez_nam %in% c("Peru", "Northern Saint-Martin", "Mozambique", "R\x8epublique du Congo", "United Kingdom")) %>%
+  select(-eez_id, -eez_key, -sov_id, -sov_nam, -eez_iso3, -sst) %>%
+  rename(sst=layer)
+write.csv(chi_2013, 'SideProjects/TedTalkSep2015/CHIscores_2013.csv', row.names=FALSE)
 
 
 #### Checking into New Zealand----
