@@ -162,7 +162,7 @@ p <- ggplot(data, aes(y=global_cumul_impact_2013_all_layers, x=OHI_2015, size=ln
      geom_point(aes(fill=r1_label), shape=21, color="black", alpha=0.8) +
   stat_smooth(method=lm, show_guide = FALSE)  +
    #geom_text(aes(label=as.character(labels1)), size=4, hjust=1) +
-  geom_text(aes(label=as.character(eez_nam)), size=4, hjust=1) +
+#  geom_text(aes(label=as.character(eez_nam)), size=4, hjust=1) +
   labs(y="Cumulative impact scores", x= "Ocean Health Index scores", size=expression("Ln coastal pop"), fill=expression("Region")) +
   scale_size(range=c(3,18)) +
     scale_fill_brewer(palette="Set1") +
@@ -177,7 +177,7 @@ p <- ggplot(data, aes(y=global_cumul_impact_2013_all_layers, x=OHI_2015, size=ln
         legend.position=c(1,1)) +
   guides(fill = guide_legend(override.aes = list(size=10)))
 plot(p)
-ggsave('SideProjects/TedTalkSep2015/CHIvsOHI_allNames.png', width=15, height=13, dpi=300)
+ggsave('SideProjects/TedTalkSep2015/CHIvsOHI_noNames.png', width=15, height=13, dpi=300)
 
 mod <- lm(ohi_2015 ~ global_cumul_impact_2013_all_layers, data=data)
 summary(mod)
@@ -187,7 +187,7 @@ summary(mod)
 ggplot(data, aes(x=ohi_change, y=global_cumul_impact_2013_minus_2008, size=lnPop)) +
   geom_point(aes(fill=r1_label), shape=21, alpha=0.8, color="black") +
 #  stat_smooth(method=lm, show_guide = FALSE)  +
-  geom_text(aes(label=as.character(labels2)), size=4, hjust=1) +
+#  geom_text(aes(label=as.character(labels2)), size=4, hjust=1) +
   labs(y="Change in Cumulative Human Impact", x= "Change in Ocean Health Index", size=expression("Ln coastal pop"), fill=expression("pop trend")) +
   scale_size(range=c(3,18)) +
   scale_fill_brewer(palette="Set1") +
@@ -200,7 +200,7 @@ ggplot(data, aes(x=ohi_change, y=global_cumul_impact_2013_minus_2008, size=lnPop
 #         legend.position=c(1,1)) +
 #   guides(fill = guide_legend(override.aes = list(size=7)))
 
-ggsave('SideProjects/TedTalkSep2015/changeInCHIvsOHI.png', width=15, height=13, dpi=300)
+ggsave('SideProjects/TedTalkSep2015/changeInCHIvsOHI_noNames.png', width=15, height=13, dpi=300)
 
 
 
@@ -434,6 +434,8 @@ saveLoc= 'SideProjects/TedTalkSep2015/CHI2013.png'
 
 raster_breaks(raster_data=CHI2013, saveLoc=saveLoc, myBreaks=my_breaks, cols=cols, legend=FALSE, title_legend=NULL)
 
+#### OHI 2015 scores mapped ----
+## see OHI2015_maps.R script
 
 ### Summary of index/goal scores ----
 require(gdata)
