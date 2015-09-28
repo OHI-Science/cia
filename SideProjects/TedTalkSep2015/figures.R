@@ -12,13 +12,16 @@ library(ggplot2) #don't load this unless it is needed for a particular plot (mes
 library(grid) #needed for myTheme function
 library(dplyr)
 library(fields)
+library(raster)
+library(sp)
+library(rgdal)
 
 legend.shrink <- 0.4
 legend.width <- 0.6
 
 
-myTheme <- theme_bw() + theme(axis.text=element_text(size=20), 
-                              axis.title=element_text(size=20, vjust=.75),
+myTheme <- theme_bw() + theme(axis.text=element_text(size=30), 
+                              axis.title=element_text(size=30, vjust=.75),
                               plot.margin=unit(c(1,1,1,1), "lines"),
                               legend.title = element_text(size=20),
                               legend.text= element_text(size=20),
@@ -140,12 +143,20 @@ mutate(labels2 = (ifelse(ohi_change > 5 |
                            ohi_change < -5 | 
                            global_cumul_impact_2013_minus_2008 < -0.5 |
                            global_cumul_impact_2013_minus_2008 > 1, eez_nam, NA)))
-head(data.frame(data))
+
+
+data <- data %>%
+  mutate(ln_CHI = log(global_cumul_impact_2013_all_layers)) %>%
+  mutate(ln_scale_CHI = 1 - (ln_CHI - min(ln_CHI, na.rm=TRUE))/(max(ln_CHI, na.rm=TRUE) - min(ln_CHI, na.rm=TRUE))) %>%
+  mutate(scale_change_CHI = 1 - (global_cumul_impact_2013_minus_2008 - min(global_cumul_impact_2013_minus_2008, na.rm=TRUE))/
+           (max(global_cumul_impact_2013_minus_2008, na.rm=TRUE) - min(global_cumul_impact_2013_minus_2008, na.rm=TRUE))) %>%
+  mutate(scale_OHI_2015 = (OHI_2015 - min(OHI_2015, na.rm=TRUE))/(max(OHI_2015, na.rm=TRUE) - min(OHI_2015, na.rm=TRUE))) %>%
+  mutate(scale_ohi_change = (ohi_change - min(ohi_change, na.rm=TRUE)) /(max(ohi_change, na.rm=TRUE) - min(ohi_change, na.rm=TRUE))) %>%
+  mutate(ohivschi_color = (ln_scale_CHI + scale_OHI_2015) / 2) %>%
+  mutate(change_color = (scale_change_CHI + scale_ohi_change) / 2)
+
 data <- data.frame(data)
 
-# Google vis plot:
-# library(googleVis)
-# gV_data <- data %>%
 #   select(-rgn_id_2013, -labels1, -labels2) %>%
 #   rename(CHI_2013=global_cumul_impact_2013_all_layers, CHI_change=global_cumul_impact_2013_minus_2008) %>%
 #   mutate(time = 2015)
@@ -158,39 +169,87 @@ data <- data.frame(data)
 # print(Motion, file='SideProjects/TedTalkSep2015/GoogleVisScores.html')
 
 
-p <- ggplot(data, aes(y=global_cumul_impact_2013_all_layers, x=OHI_2015, size=lnPop)) +
-     geom_point(aes(fill=r1_label), shape=21, color="black", alpha=0.8) +
-  stat_smooth(method=lm, show_guide = FALSE)  +
+p <- ggplot(data, aes(y=global_cumul_impact_2013_all_layers, x=OHI_2015)) +
+     geom_point(aes(fill=ohivschi_color), shape=21, color="gray30", alpha=0.7, size=12) +
+#  stat_smooth(method=lm, show_guide = FALSE)  +
    #geom_text(aes(label=as.character(labels1)), size=4, hjust=1) +
 #  geom_text(aes(label=as.character(eez_nam)), size=4, hjust=1) +
-  labs(y="Cumulative impact scores", x= "Ocean Health Index scores", size=expression("Ln coastal pop"), fill=expression("Region")) +
-  scale_size(range=c(3,18)) +
-    scale_fill_brewer(palette="Set1") +
+  labs(y="", x= "") +
+#  scale_size(range=c(3,18)) +
+   scale_fill_gradientn(colours = brewer.pal(11, "RdYlBu")) +
+#    scale_fill_brewer(palette="Set1") +
 #   scale_fill_gradientn(colours=rev(brewer.pal(11, "Spectral")), values=seq(-0.05, 0.05, length=11),  
 #                        rescaler = function(x, ...) x, oob = identity, na.value="white") +
   #scale_color_gradient(low="yellow", high="red3") +
   myTheme + 
-  theme(legend.justification=c(1,1),
-        legend.background = element_rect(colour = "gray"),
-        legend.key = element_rect(colour = NA),
-        axis.title.y = element_text(vjust=1),
-        legend.position=c(1,1)) +
-  guides(fill = guide_legend(override.aes = list(size=10)))
+  theme(legend.position="none")
+#   theme(legend.justification=c(1,1),
+#         legend.background = element_rect(colour = "gray"),
+#         legend.key = element_rect(colour = NA),
+#         axis.title.y = element_text(vjust=1),
+#         legend.position=c(1,1)) +
+#   guides(fill = guide_legend(override.aes = list(size=10)))
 plot(p)
-ggsave('SideProjects/TedTalkSep2015/CHIvsOHI_noNames.png', width=15, height=13, dpi=300)
+ggsave('SideProjects/TedTalkSep2015/CHIvsOHI_Sep25.png', width=15, height=13, dpi=300)
 
 mod <- lm(ohi_2015 ~ global_cumul_impact_2013_all_layers, data=data)
 summary(mod)
 
+#Lebanon
+p <- ggplot(data, aes(y=global_cumul_impact_2013_all_layers, x=OHI_2015)) +
+  geom_point(aes(fill=ohivschi_color), shape=21, color="gray80", alpha=0.2, size=12) +
+  geom_point(data=subset(data, eez_nam == "Lebanon"), aes(fill=ohivschi_color), shape=21, color="black", size=12) +
+  scale_fill_gradientn(colours = brewer.pal(11, "RdYlBu")) +
+    labs(y="", x= "") +
+  myTheme + 
+  theme(legend.position="none")
+plot(p)
+ggsave('SideProjects/TedTalkSep2015/CHIvsOHI_Lebanon_Sep25.png', width=15, height=13, dpi=300)
+
+#New Caledonia
+p <- ggplot(data, aes(y=global_cumul_impact_2013_all_layers, x=OHI_2015)) +
+  geom_point(aes(fill=ohivschi_color), shape=21, color="gray80", alpha=0.2, size=12) +
+  geom_point(data=subset(data, eez_nam == "New Caledonia"), fill=brewer.pal(11, "RdYlBu")[9], shape=21, color="black", size=12, alpha=1) +
+  scale_fill_gradientn(colours = brewer.pal(11, "RdYlBu")) +
+  labs(y="", x= "") +
+  myTheme + 
+  theme(legend.position="none")
+plot(p)
+ggsave('SideProjects/TedTalkSep2015/CHIvsOHI_NewCaldedonia_Sep25.png', width=15, height=13, dpi=300)
 
 
-ggplot(data, aes(x=ohi_change, y=global_cumul_impact_2013_minus_2008, size=lnPop)) +
-  geom_point(aes(fill=r1_label), shape=21, alpha=0.8, color="black") +
+#Peru
+p <- ggplot(data, aes(y=global_cumul_impact_2013_all_layers, x=OHI_2015)) +
+  geom_point(aes(fill=ohivschi_color), shape=21, color="gray80", alpha=0.2, size=12) +
+  geom_point(data=subset(data, eez_nam == "Peru"), aes(fill=ohivschi_color), shape=21, color="black", size=12) +
+  scale_fill_gradientn(colours = brewer.pal(11, "RdYlBu")) +
+  labs(y="", x= "") +
+  myTheme + 
+  theme(legend.position="none")
+plot(p)
+ggsave('SideProjects/TedTalkSep2015/CHIvsOHI_Peru_Sep25.png', width=15, height=13, dpi=300)
+
+
+"Northern Saint-Martin"
+p <- ggplot(data, aes(y=global_cumul_impact_2013_all_layers, x=OHI_2015)) +
+  geom_point(data=subset(data, eez_nam == "Northern Saint-Martin"), fill=brewer.pal(11, "RdYlBu")[8], shape=21, color="black", size=12, alpha=1) +
+    geom_point(aes(fill=ohivschi_color), shape=21, color="gray80", alpha=0.2, size=12) +
+  scale_fill_gradientn(colours = brewer.pal(11, "RdYlBu")) +
+  labs(y="", x= "") +
+  myTheme + 
+  theme(legend.position="none")
+plot(p)
+ggsave('SideProjects/TedTalkSep2015/CHIvsOHI_NSMartin_Sep25.png', width=15, height=13, dpi=300)
+
+
+ggplot(data, aes(x=ohi_change, y=global_cumul_impact_2013_minus_2008)) +
+  geom_point(aes(fill=change_color), shape=21, alpha=0.7, color="gray30", size=12) +
 #  stat_smooth(method=lm, show_guide = FALSE)  +
 #  geom_text(aes(label=as.character(labels2)), size=4, hjust=1) +
-  labs(y="Change in Cumulative Human Impact", x= "Change in Ocean Health Index", size=expression("Ln coastal pop"), fill=expression("pop trend")) +
-  scale_size(range=c(3,18)) +
-  scale_fill_brewer(palette="Set1") +
+  labs(y="", x= "") +
+#  scale_size(range=c(3,18)) +
+  scale_fill_gradientn(colours = brewer.pal(11, "RdYlBu")) +
+#  scale_fill_brewer(palette="Set1") +
   myTheme + 
   theme(legend.position="none")
 #   theme(legend.justification=c(1,1),
@@ -200,13 +259,70 @@ ggplot(data, aes(x=ohi_change, y=global_cumul_impact_2013_minus_2008, size=lnPop
 #         legend.position=c(1,1)) +
 #   guides(fill = guide_legend(override.aes = list(size=7)))
 
-ggsave('SideProjects/TedTalkSep2015/changeInCHIvsOHI_noNames.png', width=15, height=13, dpi=300)
+ggsave('SideProjects/TedTalkSep2015/changeInCHIvsOHI_Sept25.png', width=15, height=13, dpi=300)
+
+# Mozambique
+ggplot(data, aes(x=ohi_change, y=global_cumul_impact_2013_minus_2008)) +
+  geom_point(aes(fill=change_color), shape=21, alpha=0.2, color="gray30", size=12) +
+  geom_point(data=subset(data, eez_nam== "Mozambique"), fill=brewer.pal(11, "RdYlBu")[8], shape=21, alpha=1, color="black", size=12) +
+  labs(y="", x= "") +
+  scale_fill_gradientn(colours = brewer.pal(11, "RdYlBu")) +
+  myTheme + 
+  theme(legend.position="none")
+ggsave('SideProjects/TedTalkSep2015/changeInCHIvsOHI_Mozambique_Sept25.png', width=15, height=13, dpi=300)
+
+# OHI>0 & CHI>0
+ggplot(data, aes(x=ohi_change, y=global_cumul_impact_2013_minus_2008)) +
+  geom_point(aes(fill=change_color), shape=21, alpha=0.2, color="gray30", size=12) +
+  geom_point(data=subset(data, ohi_change>0 & global_cumul_impact_2013_minus_2008<0), aes(fill=change_color), shape=21, alpha=1, color="black", size=12) +
+  labs(y="", x= "") +
+  scale_fill_gradientn(colours = brewer.pal(11, "RdYlBu")) +
+  myTheme + 
+  theme(legend.position="none")
+
+ggsave('SideProjects/TedTalkSep2015/changeInCHIvsOHI_greater0_Sept25.png', width=15, height=13, dpi=300)
+
+# US/UK/Iceland
+ggplot(data, aes(x=ohi_change, y=global_cumul_impact_2013_minus_2008)) +
+  geom_point(aes(fill=change_color), shape=21, alpha=0.2, color="gray30", size=12) +
+  geom_point(data=subset(data, eez_nam %in% c("United States", "United Kingdom", "Iceland")), aes(fill=change_color), shape=21, alpha=1, color="black", size=12) +
+  labs(y="", x= "") +
+  scale_fill_gradientn(colours = brewer.pal(11, "RdYlBu")) +
+  myTheme + 
+  theme(legend.position="none")
+
+ggsave('SideProjects/TedTalkSep2015/changeInCHIvsOHI_UK_US_Ice_Sept25.png', width=15, height=13, dpi=300)
 
 
+# Croatio
+ggplot(data, aes(x=ohi_change, y=global_cumul_impact_2013_minus_2008)) +
+  geom_point(aes(fill=change_color), shape=21, alpha=0.2, color="gray30", size=12) +
+  geom_point(data=subset(data, eez_nam %in% c("Croatia")), aes(fill=change_color), shape=21, alpha=1, color="black", size=12) +
+  labs(y="", x= "") +
+  scale_fill_gradientn(colours = brewer.pal(11, "RdYlBu")) +
+  myTheme + 
+  theme(legend.position="none")
+
+ggsave('SideProjects/TedTalkSep2015/changeInCHIvsOHI_Croatia_Sept25.png', width=15, height=13, dpi=300)
+
+############################################################
+
+### Mapping data
 
 
 
 #### Old 2008 CHI map ----
+
+rasters = file.path('/var/cache/halpern-et-al', 
+                    'mnt/storage/marine_threats/impact_layers_2013_redo')
+myFiles = file.path("/var/data/ohi/git-annex/Global/NCEAS-Pressures-Summaries_frazier2013")
+
+
+# set temporary directory to folder on neptune disk big enough to handle it
+tmpdir='~/big/R_raster_tmp'
+dir.create(tmpdir, showWarnings=F)
+rasterOptions(tmpdir=tmpdir)
+
 
 # land layer for plots ----
 rgn_ocn_cntry <- readOGR("/var/data/ohi/model/GL-NCEAS-OceanRegions_v2013a/data", layer="rgn_ocean_cntry_gcs")
@@ -243,6 +359,40 @@ raster_breaks <- function(raster_data, saveLoc, title, title_legend=NULL, myBrea
   
   dev.off()
 }
+
+
+raster_breaks_midRes <- function(raster_data, saveLoc, title, title_legend=NULL, myBreaks, cols, ice_over=FALSE, legend=TRUE){
+  #   par(mar=c(2,2,2,2))
+  #   par(oma=c(0,0,0,4))
+  width = 15
+  png(saveLoc, res=1500, width=width, height=width*nrow(raster_data)/ncol(raster_data), units="in")
+  plot(raster_data, col=cols, axes=FALSE, box=FALSE, breaks=myBreaks, legend=FALSE, useRaster=FALSE)
+  # add axis with fields package function:
+  def_breaks <- seq(0, length(myBreaks), length.out=length(myBreaks))
+  
+  if(legend){
+    image.plot(raster_data, #zlim = c(min(myBreaks), max(myBreaks)), 
+               legend.only = TRUE, 
+               legend.shrink=legend.shrink,
+               legend.width=legend.width,
+               col = cols,
+               legend.lab=title_legend,
+               breaks=def_breaks,
+               lab.breaks=round(myBreaks, 1),
+               axis.args = list(cex.axis = 0.8))
+  }
+  
+  if(ice_over){
+    plot(ice_max, add=TRUE, border=NA, col="#00000059") #35% transparent
+    plot(ice_min, add=TRUE, border="gray80", col="white")
+    plot(ice_min, add=TRUE, border=NA, col="white")
+  }
+  plot(land, add=TRUE, border="gray100", col="gray90", lwd=0.5)
+  
+  dev.off()
+}
+
+
 
 
 ### old 2008 CHI
@@ -290,6 +440,24 @@ raster_defaultLegend <- function(raster_data, saveLoc, title_plot=NA, cols, ice_
   plot(land, add=TRUE, border="gray100", col="gray90", lwd=0.5)  
   dev.off()
 }
+
+raster_defaultLegend_midRes <- function(raster_data, saveLoc, title_plot=NA, cols, ice_over=TRUE){
+  #   par(mar=c(2,2,2,2))
+  #   par(oma=c(0,0,0,4))
+  width=15
+  png(saveLoc, res=1800, width=width, height=width*nrow(raster_data)/ncol(raster_data), units="in")  
+  #pdf(file.path(path_save, saveLoc))  #, width=1200, height=1000, res=150, pointsize=14)
+  plot(raster_data, col=cols, axes=FALSE, box=FALSE, legend=FALSE, useRaster=FALSE)
+  title(main=title_plot, line=-5)
+  if(ice_over){
+    plot(ice_max, add=TRUE, border=NA, col="#00000033")
+    plot(ice_min, add=TRUE, border="gray80", col="white")
+    plot(ice_min, add=TRUE, border=NA, col="white")
+  }
+  plot(land, add=TRUE, border="gray100", col="gray90", lwd=0.3)  
+  dev.off()
+}
+
 
 ## Zoom in on change in CHI 2013 data ----
 ### crop different regions
@@ -379,15 +547,35 @@ raster_breaks(raster_data=dem_nd_lb_crop, saveLoc, title, title_legend=NULL, myB
 #                      ice_over = FALSE)
 
 #####  New 2013 CHI and change ----
+
 cols = rev(colorRampPalette(brewer.pal(11, 'Spectral'))(250))
 
 changeCHI_2013 <- raster(file.path(myFiles, 'TrimmedPressureLayers/Pressures2013minus2008_wgs/global_cumulative_impact_dif_wgs.tif'))
-saveLoc= 'SideProjects/TedTalkSep2015/CHI2013minus2008_newColors.png'
+saveLoc= '/var/data/ohi/git-annex/Global/NCEAS-Pressures-Summaries_frazier2013/SideProjects/TedTalkSep2015/CHI2013minus2008_midres.png'
 
-raster_defaultLegend(raster_data=changeCHI_2013, 
+breaks=seq(minValue(changeCHI_2013), maxValue(changeCHI_2013), length.out=251)
+
+raster_breaks_midRes(raster_data=changeCHI_2013, 
                      saveLoc=saveLoc,
+                     myBreaks=breaks,
                      cols=cols,
-                     ice_over = FALSE)
+                     legend=FALSE,
+                     title_legend=NULL)
+
+northSea_crop <- c(-11, 10, 50, 62)
+NScrop <- crop(changeCHI_2013, northSea_crop)
+plot(NScrop)
+
+saveLoc= '/var/data/ohi/git-annex/Global/NCEAS-Pressures-Summaries_frazier2013/SideProjects/TedTalkSep2015/CHI2013minus2008_NScrop_midres.png'
+
+raster_breaks_midRes(raster_data=NScrop, 
+                     saveLoc=saveLoc,
+                     myBreaks=breaks,
+                     cols=cols,
+                     legend=FALSE,
+                     title_legend=NULL)
+
+
 
 ## Zoom in on change in CHI 2013 data ----
 ### crop different regions
