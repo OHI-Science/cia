@@ -157,6 +157,13 @@ data <- data %>%
 
 data <- data.frame(data)
 
+# Ben request 2/10/16
+tmp <- filter(data, global_cumul_impact_2013_minus_2008<0 & ohi_change > 0) %>%
+  select(eez_nam) %>%
+  arrange(eez_nam)
+write.csv(tmp, "SideProjects/TedTalkSep2015/Countries_lessCHI_moreOHI.csv", row.names=FALSE)
+
+
 #   select(-rgn_id_2013, -labels1, -labels2) %>%
 #   rename(CHI_2013=global_cumul_impact_2013_all_layers, CHI_change=global_cumul_impact_2013_minus_2008) %>%
 #   mutate(time = 2015)

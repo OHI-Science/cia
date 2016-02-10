@@ -542,6 +542,17 @@ cols = rev(colorRampPalette(brewer.pal(11, 'Spectral'))(length(my_breaks)+2))[2:
 
 raster_breaks(raster_data=Cum2013, saveLoc="Fig3.CumImp2013.png", myBreaks=my_breaks, cols=cols)
   
+### following highlights the hotspots for Ben's TED talk (2/10/2016)
+my_breaks <- c(0, 1.781894, 2.377814, 2.986494, 3.316144, 3.558642, 3.750878, 
+               3.923132, 4.127960, 4.384074, 6, 16)
+#cols = rev(colorRampPalette(brewer.pal(11, 'Spectral'))(length(my_breaks)+2))[2:12] #stripping extreme ends of the color spectrum
+cols = c("#3C7AB633", "#4DA7B033", "#7BCAA433", "#AFDEA333",
+         "#DCF19933", "#F5FBAF33", "#FEF3AB33", "#FDD88433",
+         "#FDB16433", "#F6814C33", "red")
+raster_breaks(raster_data=Cum2013, 
+              saveLoc="../SideProjects/TedTalkSep2015/CumImp2013_hotspots.png", 
+              myBreaks=my_breaks, cols=cols, ice_over=FALSE)
+
 
 
 ## Figure 4 ----
