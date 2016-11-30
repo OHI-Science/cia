@@ -37,16 +37,16 @@ myTheme <- theme_bw() + theme(axis.text=element_text(size=20),
 source('~/ohiprep/src/R/common.R')
 
 #paths:
-path <- file.path(dir_neptune_data, 'git-annex/Global/NCEAS-Pressures-Summaries_frazier2013')
-path_trim <- file.path(dir_neptune_data, "git-annex/Global/NCEAS-Pressures-Summaries_frazier2013/TrimmedPressureLayers")
-path_save <- file.path(dir_neptune_data, "git-annex/Global/NCEAS-Pressures-Summaries_frazier2013/ResultMaps")
+path <- file.path(dir_M, 'git-annex/Global/NCEAS-Pressures-Summaries_frazier2013')
+path_trim <- file.path(dir_M, "git-annex/Global/NCEAS-Pressures-Summaries_frazier2013/TrimmedPressureLayers")
+path_save <- file.path(dir_M, "git-annex/Global/NCEAS-Pressures-Summaries_frazier2013/ResultMaps")
 
-rasters = file.path(dir_halpern2008, 
-                    'mnt/storage/marine_threats/impact_layers_2013_redo')
+rasters = file.path(dir_M, 
+                    'marine_threats/impact_layers_2013_redo')
 
 
 # land layer for plots ----
-rgn_ocn_cntry <- readOGR("/var/data/ohi/model/GL-NCEAS-OceanRegions_v2013a/data", layer="rgn_ocean_cntry_mol")
+rgn_ocn_cntry <- readOGR(file.path(dir_M, "model/GL-NCEAS-OceanRegions_v2013a/data"), layer="rgn_ocean_cntry_mol")
 land <- rgn_ocn_cntry[!is.na(rgn_ocn_cntry@data$ISO_3digit) & rgn_ocn_cntry@data$rgn_id==0,]
 
 # ice data
@@ -266,6 +266,9 @@ raster_defaultLegend(raster_data=diff_noLand,
                      title_legend="Change in\ncumulative impact",
                      cols = rev(colorRampPalette(brewer.pal(11, 'Spectral'))(250)))
 
+# plot(diff_noLand)
+# writeRaster(diff_noLand, "../../shares/web/pressures/htdocs/fig1_Change.tif", format="GTiff")
+
 ## getting percent difference:
 ## diff_noLand/2008 raster layer
 
@@ -383,7 +386,7 @@ dev.off()
 ## Fig. 2: EEZ change in CHI vs. absolute CHI ----
 library(dplyr)
 library(ggplot2)
-eez2ohi <- read.csv(file.path(dir_neptune_data, "model/GL-NCEAS-OceanRegions_v2013a/data/rgn_2013master.csv"), stringsAsFactors=FALSE) %>%
+eez2ohi <- read.csv(file.path(dir_M, "model/GL-NCEAS-OceanRegions_v2013a/data/rgn_2013master.csv"), stringsAsFactors=FALSE) %>%
   select(rgn_id_2013, eez_id, eez_nam)
 
 eez2ohi$eez_id[eez2ohi$rgn_id_2013==137] <- 137
@@ -402,7 +405,7 @@ eez2ohi <- rbind(eez2ohi, data.frame(rgn_id_2013=224, eez_id=225, eez_nam="Chile
 eez2ohi$eez_nam[eez2ohi$rgn_id_2013==32] <- "Reunion"
 eez2ohi$eez_nam[eez2ohi$rgn_id_2013==100] <- "Republique du Congo"
 
-eezArea <- read.csv(file.path(dir_neptune_data, "model/GL-NCEAS-OceanRegions_v2013a/data/eez_area.csv"), stringsAsFactors=FALSE)%>%
+eezArea <- read.csv(file.path(dir_M, "model/GL-NCEAS-OceanRegions_v2013a/data/eez_area.csv"), stringsAsFactors=FALSE)%>%
   mutate(eez_id = as.character(eez_id)) %>%
   select(eez_id, area_km2)
 
@@ -523,11 +526,21 @@ ggplot(datadiff2, aes(x=global_cumul_impact_2013_minus_2008, y=global_cumul_impa
 
 ggsave(file.path(path_save, 'CHI2013vsCHIGamma_area_labels_v3.pdf'), )
 
+write.csv(datadiff2, "../../shares/web/pressures/htdocs/fig2_Dataset.csv", row.names=FALSE)
 
 
 ## Figure 3 ----
 # Part a: Global 2013 scores
-Cum2013 <- raster(file.path(path_trim, "Pressures2013/global_cumulative_impact_2013_all_layers"))
+# Cum2013 <- raster(file.path(path_trim, "Pressures2013/global_cumulative_impact_2013_all_layers"))
+# writeRaster(Cum2013, "../../shares/web/pressures/htdocs/data/fig4_CumulativeImpacts.tif", format="GTiff")
+# # Put the three files I created into a zip file
+# 
+# setwd("../../shares/web/pressures/htdocs/data") # NOTE: have to set working directory because you can't have paths in zipfile
+# zip(zipfile = "NG_human_impacts_data",
+#                                       files = c("fig4_CumulativeImpacts.tif",
+#                                                  "fig1_Change.tif",
+#                                                  "fig2_Dataset.csv"))
+
 
 ## most breaks are 0.1 quantiles, but the last one is 0.5
 # quantile(Cum2013, probs=c(seq(0,1, by=0.1)))
