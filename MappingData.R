@@ -21,11 +21,6 @@ library(fields)
 #library(spatial.tools)
 #library(classInt)
 
-# set temporary directory to folder on neptune disk big enough to handle it
-tmpdir='~/big/R_raster_tmp'
-dir.create(tmpdir, showWarnings=F)
-rasterOptions(tmpdir=tmpdir)
-
 myTheme <- theme_bw() + theme(axis.text=element_text(size=20), 
                               axis.title=element_text(size=20, vjust=.75),
                               plot.margin=unit(c(1,1,1,1), "lines"),
@@ -1016,10 +1011,7 @@ overlay(s, fun=function(x,y) x*y,
 
 total <- raster(file.path(path_save, "Pressures2013_raw_2013_OneYear/SumRawPressures_na_rm_clipped"))
 
-
-fl <- crop(nutrient_zeroCut, fl_extent)
-
-
+#source(BenRequestMar28_2017.R) #makes this plot with different color scale
 
 png(file.path(path_save, "Pressures2013_raw_2013_OneYear/SumRawPressures_na_rm_clipped.png"), res=500, width=7, height=7, units="in")  
   cols = colorRampPalette(brewer.pal(11, 'Spectral'))(250)
