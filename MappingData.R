@@ -1011,7 +1011,8 @@ overlay(s, fun=function(x,y) x*y,
 
 total <- raster(file.path(path_save, "Pressures2013_raw_2013_OneYear/SumRawPressures_na_rm_clipped"))
 
-#source(BenRequestMar28_2017.R) #makes this plot with different color scale
+#source(SideProjects/BenRequestMar28_2017.R) #makes this plot with different color scale
+#source(SideProjects/BenRequestFeb16_2018.R) # makes a larger, simplified version of the figure
 
 png(file.path(path_save, "Pressures2013_raw_2013_OneYear/SumRawPressures_na_rm_clipped.png"), res=500, width=7, height=7, units="in")  
   cols = colorRampPalette(brewer.pal(11, 'Spectral'))(250)
@@ -1273,8 +1274,6 @@ plot(extent(uk_extent), col="red", add=TRUE)
 plot(extent(cn_extent), col="red", add=TRUE)
 plot(extent(med_extent), col="red", add=TRUE)
 dev.off()
-
-
 
 ###################################
 # S9: no longer doing
