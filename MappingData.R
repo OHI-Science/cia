@@ -18,7 +18,7 @@ library(RColorBrewer)
 library(fields)
 #library(ggplot2) #don't load this unless it is needed for a particular plot (messes things up)
 #library(grid) #needed for myTheme function
-#library(spatial.tools)
+library(spatial.tools)
 #library(classInt)
 
 myTheme <- theme_bw() + theme(axis.text=element_text(size=20), 

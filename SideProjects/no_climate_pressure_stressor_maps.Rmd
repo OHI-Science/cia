@@ -1,0 +1,400 @@
+---
+title: "BenRequest"
+output: html_document
+---
+
+Request from Ben on Jan 14 2020
+
+Setting things up.  Copied from MappingData.R (likely don't need most of this)
+```{r setup, include=FALSE}
+## Downloading packages
+library(rgdal)
+library(raster)
+library(sp)
+library(tidyr)
+library(rasterVis)
+library(RColorBrewer)
+library(fields)
+library(ggplot2)
+library(spatial.tools)
+
+myTheme <- theme_bw() + theme(axis.text=element_text(size=20), 
+                              axis.title=element_text(size=20, vjust=.75),
+                              plot.margin=unit(c(1,1,1,1), "lines"),
+                              legend.title = element_text(size=20),
+                              legend.text= element_text(size=20),
+                              plot.title = element_text(lineheight=.8, size=20),
+                              strip.text.x = element_text(size = 18)) 
+
+source('~/ohiprep/src/R/common.R')
+
+#paths:
+path <- file.path(dir_M, 'git-annex/Global/NCEAS-Pressures-Summaries_frazier2013')
+path_trim <- file.path(dir_M, "git-annex/Global/NCEAS-Pressures-Summaries_frazier2013/TrimmedPressureLayers")
+path_save <- file.path(dir_M, "git-annex/Global/NCEAS-Pressures-Summaries_frazier2013/ResultMaps")
+
+rasters = file.path(dir_M, 
+                    'marine_threats/impact_layers_2013_redo')
+
+
+# land layer for plots ----
+rgn_ocn_cntry <- readOGR(file.path(dir_M, "model/GL-NCEAS-OceanRegions_v2013a/data"), layer="rgn_ocean_cntry_mol")
+land <- rgn_ocn_cntry[!is.na(rgn_ocn_cntry@data$ISO_3digit) & rgn_ocn_cntry@data$rgn_id==0,]
+
+# ice data
+ice_max <- readOGR(file.path(path, 'sea_ice_Liz_Apr_6_2015/ice'), layer='NewMaxIce')
+ice_min <- readOGR(file.path(path, 'sea_ice_Liz_Apr_6_2015/ice'), layer='minIce_mol')
+
+legend.shrink <- 0.4
+legend.width <- 0.6
+
+# raster functions ----
+raster_defaultLegend <- function(raster_data, saveLoc, title_legend=NA, title_plot=NA, cols, ice_over=TRUE){
+#   par(mar=c(2,2,2,2))
+#   par(oma=c(0,0,0,4))
+  png(file.path(path_save, saveLoc), res=500, width=7, height=7, units="in")  
+  #pdf(file.path(path_save, saveLoc))  #, width=1200, height=1000, res=150, pointsize=14)
+  plot(raster_data, col=cols, axes=FALSE, box=FALSE, legend.shrink=legend.shrink, legend.width=legend.width, 
+       axis.args=list(cex.axis=.8), 
+       legend.args=list(text=title_legend, font=2, line=1, cex=1))
+  title(main=title_plot, line=-5)
+   if(ice_over){
+    plot(ice_max, add=TRUE, border=NA, col="#00000033")
+    plot(ice_min, add=TRUE, border="gray80", col="white")
+    plot(ice_min, add=TRUE, border=NA, col="white")
+  }
+plot(land, add=TRUE, border="gray80", col="gray90", lwd=0.5)  
+  dev.off()
+}
+
+raster_breaks <- function(raster_data, saveLoc, title, title_legend=NULL, myBreaks, cols, ice_over=TRUE){
+#   par(mar=c(2,2,2,2))
+#   par(oma=c(0,0,0,4))
+png(file.path(path_save, saveLoc), res=500, width=7, height=7, units="in")
+plot(raster_data, col=cols, axes=FALSE, box=FALSE, breaks=myBreaks, legend=FALSE)
+# add axis with fields package function:
+def_breaks <- seq(0, length(myBreaks), length.out=length(myBreaks))
+image.plot(raster_data, #zlim = c(min(myBreaks), max(myBreaks)), 
+           legend.only = TRUE, 
+           legend.shrink=legend.shrink,
+           legend.width=legend.width,
+           col = cols,
+           legend.lab=title_legend,
+           breaks=def_breaks,
+           lab.breaks=round(myBreaks, 1),
+           axis.args = list(cex.axis = 0.8))
+
+if(ice_over){
+plot(ice_max, add=TRUE, border=NA, col="#00000059") #35% transparent
+plot(ice_min, add=TRUE, border="gray80", col="white")
+plot(ice_min, add=TRUE, border=NA, col="white")
+}
+plot(land, add=TRUE, border="gray80", col="gray90", lwd=0.5)
+
+dev.off()
+}
+
+
+difPlots <- function(rast_data, my_breaks, file_name, legend=TRUE, extent=FALSE, title=NA, ice_over=TRUE){
+  #pdf(file.path(path_save, 'Fig2a.SST_diff.pdf'))  #, width=1200, height=1000, res=150, pointsize=14)
+  png(file.path(path_save, file_name), res=500, width=7, height=7, units="in")
+  cols_low = colorRampPalette(c("#5E4FA2", "#3288BD", "#66C2A5", "#ABDDA4", "#E6F598", "#FFFFBF"))((length(my_breaks)-1)/2)
+  cols_high = colorRampPalette(c("#FEE08B", "#FDAE61",  "#F46D43", "#D53E4F", "#9E0142"))((length(my_breaks)-1)/2)
+  cols <- c(cols_low, cols_high)  
+  plot(rast_data, col=cols, axes=FALSE, box=FALSE, breaks=my_breaks, legend=FALSE)
+  if(!is.na(title)){title(main=title, line=-5)}
+    
+  if(legend){
+     def_breaks <- c(my_breaks[my_breaks<0], NA, 0, NA, my_breaks[my_breaks>0])
+     locs <- seq(1, length(def_breaks))
+    
+    image.plot(rast_data, zlim = c(min(my_breaks), max(my_breaks)), 
+               legend.only = TRUE, 
+               legend.shrink=0.4,
+               legend.width=0.6,
+               col = c(cols_low, "#FFFFFF", "#FFFFFF", cols_high),
+             breaks = locs,
+             lab.breaks = round(def_breaks, 2),
+               axis.args = list(cex.axis=0.8))
+  }
+  
+  if(ice_over){
+    plot(ice_min, add=TRUE, border="gray80", col="white")
+    plot(ice_min, add=TRUE, border=NA, col="white")
+    plot(ice_max, add=TRUE, border=NA, col="#00000033") #35% transparent
+  }
+  
+  plot(land, add=TRUE, border="gray80", col="gray90", lwd=0.5)
+  
+  if(extent){
+    plot(extent(fl_extent), col="red", add=TRUE)
+    plot(extent(uk_extent), col="red", add=TRUE)
+    plot(extent(cn_extent), col="red", add=TRUE)
+  #  plot(extent(med_extent), col="red", add=TRUE)
+  }
+  
+  dev.off()  
+}
+
+
+### regions for coastal pressures:
+# find extents
+# plot(nutrient_zeroCut)
+# extent <- drawExtent()
+
+## crop different regions
+# Florida
+fl_extent <- c(-7900000, -7300000, 3000000, 3800000)
+# ches_extent <- c(-6700000, -6400000, 4400000, 4800000)
+# miss_extent <- c(-8500000, -8100000, 3450000, 3850000)
+# gom_extent <- c(-8300000, -7400000, 2900000, 3850000)
+med_extent <- c(1900000, 3300000, 3700000, 4900000)
+uk_extent <- c(-800000, 200000, 5800000, 6900000)
+cn_extent <- c(10000000, 11400000, 2500000, 4400000)
+
+difference_data <- data.frame(layer=c("demersal_destructive_fishing", 
+                                   "demersal_nondest_high_bycatch", 
+                                   "demersal_nondest_low_bycatch",
+                                   "night_lights",
+                                   "oil_rigs",
+                                   "pelagic_high_bycatch",
+                                   "pelagic_low_bycatch",
+                                   "plumes_fert",
+                                   "plumes_pest",
+                                   "population",
+                                   "sst",
+                                   "uv"),
+                           newName=c("Demersal destructive fishing",
+                                     "Demersal nondestructive high bycatch fishing",
+                                     "Demersal nondestructive low bycatch fishing",
+                                     "Light pollution",
+                                     "Oil rigs", 
+                                     "Pelagic high bycatch fishing",
+                                     "Pelagic low bycatch fishing",
+                                     "Nutrient pollution",
+                                     "Organic pollution",
+                                     "Direct human impact",
+                                     "Sea surface temperature",
+                                     "UV"))
+
+
+coastal_pressures <- data.frame(layers = c("artisanal_fishing", 
+                                          "inorganic",
+                                          "invasives",
+                                          "night_lights",
+                                          "oil_rigs",
+                                          "plumes_fert",
+                                          "plumes_pest",
+                                          "population",
+                                          "slr"),
+                                newName = c("Artisanal fishing",
+                                           "Inorganic pollution",
+                                           "Invasive species",
+                                           "Light pollution",
+                                           "Oil rigs",
+                                           "Nutrient pollution",
+                                           "Organic pollution",
+                                           "Direct human impact",
+                                           "Sea level rise"))
+
+ocean_pressures <- data.frame(layer = c("demersal_destructive_fishing",
+                                    "demersal_nondest_high_bycatch", 
+                                    "demersal_nondest_low_bycatch",  
+                                    "ocean_acidification",
+                                    "ocean_pollution", 
+                                    "pelagic_high_bycatch",
+                                    "pelagic_low_bycatch",
+                                    "shipping",
+                                    "sst", 
+                                    "uv"),
+                          newName = c("Demersal destructive fishing",
+                                    "Demersal nondestructive high bycatch fishing",
+                                    "Demersal nondestructive low bycatch fishing",
+                                    "Ocean acidification",
+                                    "Ocean-based pollution",
+                                    "Pelagic high bycatch fishing",
+                                    "Pelagic low bycatch fishing",
+                                    "Shipping",
+                                    "Sea surface temperature",
+                                    "UV"))
+
+ocean_pressures_diff <- data.frame(layer = c("demersal_destructive_fishing",
+                                        "demersal_nondest_high_bycatch", 
+                                        "demersal_nondest_low_bycatch",  
+                                        "pelagic_high_bycatch",
+                                        "pelagic_low_bycatch",
+                                        "sst", 
+                                        "uv"),
+                              newName = c("Demersal destructive fishing",
+                                          "Demersal nondestructive high bycatch fishing",
+                                          "Demersal nondestructive low bycatch fishing",
+                                          "Pelagic high bycatch fishing",
+                                          "Pelagic low bycatch fishing",
+                                          "Sea surface temperature",
+                                          "UV"))
+
+coastal_pressures_diff <- data.frame(layers = c("night_lights",
+                                           "oil_rigs",
+                                           "plumes_fert",
+                                           "plumes_pest",
+                                           "population"),
+                                newName = c("Light pollution",
+                                            "Oil rigs",
+                                            "Nutrient pollution",
+                                            "Organic pollution",
+                                            "Direct human impact"))
+```
+
+## Pressure map without climate data
+
+```{r}
+## SOM Fig. 6: Global map of summed stressor intensity (unweighted by habitat vulnerability)----
+stress_path <- file.path(rasters, 
+                         'impact_layers/final_impact_layers/threats_2013_final/normalized_by_one_time_period')
+
+tifs = list.files(stress_path, 
+                  pattern=glob2rx('*.tif'))
+
+# visualize:
+tmp <- raster(file.path(rasters, 
+                         'impact_layers/final_impact_layers/threats_2013_final/normalized_by_one_time_period/ocean_pollution.tif'))
+plot(tmp)
+
+tifs_1 <- c("demersal_destructive_fishing.tif", "demersal_nondest_high_bycatch.tif", "demersal_nondest_low_bycatch.tif",
+#            "ocean_acidification.tif", 
+"pelagic_high_bycatch.tif", "pelagic_low_bycatch.tif", "shipping.tif"
+#"slr.tif", "sst.tif", "uv.tif"
+)  # correct resolution
+
+tifs_2 <- c("artisanal_fishing.tif", "inorganic.tif", "plumes_fert.tif", "plumes_pest.tif", 
+            "invasives.tif", "night_lights.tif", "oil_rigs.tif", "population.tif") # need to fix_extent
+
+tifs_3 <- c("ocean_pollution.tif")
+
+stack_2013_one_raw <- stack()
+for(i in 1:length(tifs_1)){
+  tmp <- raster(file.path(stress_path, tifs_1[i]))
+  stack_2013_one_raw <- stack(stack_2013_one_raw, tmp )
+}
+
+for(i in 1:length(tifs_2)){
+#  i <- 1
+  tmp <- raster(file.path(stress_path, tifs_2[i]))
+  tmp = extend(tmp, raster(stack_2013_one_raw, 1)) 
+  extent(tmp) = extent(raster(stack_2013_one_raw, 1))
+  stack_2013_one_raw <- stack(stack_2013_one_raw, tmp)  
+}
+
+for(i in 1:length(tifs_3)){
+  tmp <- raster(file.path(stress_path, tifs_3[i]))
+  tmp <- modify_raster_margins(tmp, extent_delta=c(1,0,1,0))
+  extent(tmp) = extent(raster(stack_2013_one_raw, 1))
+  stack_2013_one_raw <- stack(stack_2013_one_raw, tmp)  
+}
+
+calc(stack_2013_one_raw, sum, filename = file.path(path_save, "Pressures2013_raw_2013_OneYear/SumRawPressures_no_climate"), progress="text")
+calc(stack_2013_one_raw, sum, na.rm=TRUE, filename = file.path(path_save, "Pressures2013_raw_2013_OneYear/SumRawPressures_na_rm_no_climate"), progress="text")
+
+# save a tif version
+calc(stack_2013_one_raw, sum, na.rm=TRUE, filename = file.path(path_save, "Pressures2013_raw_2013_OneYear/SumRawPressures_na_rm_no_climate.tif"), progress="text")
+
+total <- raster(file.path(path_save, "Pressures2013_raw_2013_OneYear/SumRawPressures_na_rm_no_climate.tif"))
+plot(total)
+
+# clip outter parts
+clip_raster <- raster(file.path(path, "clip_raster"))
+
+s <- stack(total, clip_raster)
+overlay(s, fun=function(x,y) x*y, 
+        filename=file.path(path_save, "Pressures2013_raw_2013_OneYear/SumRawPressures_na_rm_no_climate_clipped.tif"),
+        progress="text", overwrite=TRUE)
+
+
+total <- raster(file.path(path_save, "Pressures2013_raw_2013_OneYear/SumRawPressures_na_rm_no_climate_clipped.tif"))
+
+
+png(file.path(path_save, "Pressures2013_raw_2013_OneYear/SumRawPressures_na_rm_no_climate_clipped.png"), res=500, width=7, height=7, units="in")  
+  cols = colorRampPalette(brewer.pal(11, 'Spectral'))(250)
+  plot(total, col=rev(cols), axes=FALSE, box=FALSE, legend.shrink=0.5, legend.width=0.6, 
+       breaks=seq(minValue(total), maxValue(total), length.out=250),
+       axis.args=list(cex.axis=1.3,
+       at=seq(minValue(total), maxValue(total), 2),
+      labels=seq(minValue(total), maxValue(total), 2))
+       )
+  title(main="Total stressor intensity", line=-5)
+
+# plot(ice_max, add=TRUE, border=NA, col="#0000004D") #30% transparent
+# plot(ice_min, add=TRUE, border="gray80", col="white")
+# plot(ice_min, add=TRUE, border=NA, col="white")
+
+plot(land, add=TRUE, border="gray80", col="gray90", lwd=0.5)
+
+dev.off()
+
+```
+
+
+## Impacts
+
+Quick check to make sure everything matches.  Looks good!
+```{r}
+
+## current chi raster
+chi <- raster("/home/shares/ohi/git-annex/Global/NCEAS-Pressures-Summaries_frazier2013/TrimmedPressureLayers/Pressures2013/global_cumulative_impact_2013_all_layers")
+
+## adding together the impact files
+impacts <- list.files("/home/shares/ohi/git-annex/Global/NCEAS-Pressures-Summaries_frazier2013/TrimmedPressureLayers/Pressures2013", full=TRUE, pattern="gri")
+
+impacts <- impacts[-(grep("cumulative_impact",impacts))]
+impacts <- gsub(".gri", "", impacts)
+
+all_impacts <- stack(impacts)
+chi_compare <- calc(all_impacts, sum, na.rm=TRUE, progress="text")
+
+```
+
+
+Sum all non-climate impacts.
+```{r}
+impacts <- list.files("/home/shares/ohi/git-annex/Global/NCEAS-Pressures-Summaries_frazier2013/TrimmedPressureLayers/Pressures2013", full=TRUE, pattern="gri")
+
+impacts <- impacts[-(grep("cumulative_impact|slr|sst|uv|acid",impacts))]
+impacts <- gsub(".gri", "", impacts)
+
+all_impacts <- stack(impacts)
+calc(all_impacts, sum, na.rm=TRUE, progress="text", filename=file.path(path_save, "Pressures2013_raw_2013_OneYear/SumImpacts_no_climate.tif"),
+       overwrite=TRUE)
+
+impact_no_climate <- file.path(path_save, "Pressures2013_raw_2013_OneYear/SumImpacts_no_climate.tif")
+clip_raster <- raster(file.path(path, "clip_raster"))
+
+s <- stack(impact_no_climate, clip_raster)
+overlay(s, fun=function(x,y) x*y, 
+        filename=file.path(path_save, "Pressures2013_raw_2013_OneYear/SumImpacts_no_climate_clipped.tif"),
+        progress="text", overwrite=TRUE)
+
+Cum_impact <- raster(file.path(path_save, "Pressures2013_raw_2013_OneYear/SumImpacts_no_climate_clipped.tif"))
+
+my_breaks <- c(0, 1.781894, 2.377814, 2.986494, 3.316144, 3.558642, 3.750878, 
+               3.923132, 4.127960, 4.384074, 4.571275, 16)
+cols = rev(colorRampPalette(brewer.pal(11, 'Spectral'))(length(my_breaks)+2))[2:12] #stripping extreme ends of the color spectrum
+#cols <- c("#00000026", "white", cols)
+
+#cols = rev(brewer.pal(11, 'Spectral')) #full spectrum
+
+raster_breaks(raster_data=Cum_impact, saveLoc="Fig3.CumImp2013_no_climate.png", myBreaks=my_breaks, cols=cols, ice_over=FALSE)
+
+```
+
+
+# move file for download
+```{r}
+current_folder <- "/home/shares/ohi/git-annex/Global/NCEAS-Pressures-Summaries_frazier2013/ResultMaps/Pressures2013_raw_2013_OneYear"
+setwd(current_folder)
+new_folder <- "/home/shares/web/data/htdocs/data/CHI_no_climate.zip"
+list_of_files <- c("SumRawPressures_na_rm_no_climate_clipped.tif", "SumRawPressures_na_rm_no_climate_clipped.png", 
+                              "SumImpacts_no_climate_clipped.tif", "Fig3.CumImp2013_no_climate.png")
+ 
+zip(zipfile = new_folder, files = list_of_files)
+
+```
